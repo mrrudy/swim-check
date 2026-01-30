@@ -10,7 +10,10 @@
       "Bash(ls:*)",
       "Bash(wc:*)",
       "Bash(du:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(pnpm install:*)",
+      "Bash(npm install:*)",
+      "Bash(powershell:*)"
     ]
   }
 }
