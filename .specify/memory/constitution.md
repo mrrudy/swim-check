@@ -1,50 +1,118 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+=============================================================================
+SYNC IMPACT REPORT
+=============================================================================
+Version Change: 0.0.0 → 1.0.0 (MAJOR - Initial constitution ratification)
+
+Modified Principles: N/A (initial creation)
+
+Added Sections:
+- Core Principles (3 principles: Test-First Development, Readable Code, Simplicity)
+- Development Workflow
+- Quality Gates
+- Governance
+
+Removed Sections: N/A (initial creation)
+
+Templates Requiring Updates:
+- .specify/templates/plan-template.md: ✅ Already aligned (Constitution Check section)
+- .specify/templates/spec-template.md: ✅ Already aligned (user stories with testing)
+- .specify/templates/tasks-template.md: ✅ Already aligned (test-first task ordering)
+
+Follow-up TODOs: None
+=============================================================================
+-->
+
+# Swim-Check Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Test-First Development (NON-NEGOTIABLE)
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+Every piece of functionality MUST have a test case written before implementation.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+**Rules:**
+- Tests MUST be written and approved before any implementation code
+- Tests MUST fail before implementation (Red-Green-Refactor cycle)
+- No functionality may be merged without corresponding test coverage
+- Test names MUST clearly describe the expected behavior
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+**Rationale:** Test-first development ensures requirements are understood before
+coding, prevents regression, and creates living documentation of expected behavior.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### II. Readable Code
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+Code MUST be easy to understand for both humans and AI assistants.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+**Rules:**
+- Variable, function, and class names MUST be descriptive and self-documenting
+- Complex logic MUST be broken into named functions with clear purposes
+- Comments MUST explain "why" not "what" (code should show the "what")
+- Avoid clever tricks - prefer explicit over implicit
+- File and folder structure MUST reflect logical organization
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+**Rationale:** Code is read far more often than written. Clear code reduces
+cognitive load, speeds up debugging, and enables effective AI-assisted development.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### III. Simplicity
+
+Functionality MUST be provided in the simplest possible way.
+
+**Rules:**
+- Start with the minimal solution that meets requirements (YAGNI)
+- Avoid premature abstraction - wait for patterns to emerge from real usage
+- Prefer standard library solutions over third-party dependencies
+- Each module/function MUST have a single, clear responsibility
+- If a simpler alternative exists, it MUST be justified to reject it
+
+**Rationale:** Simple code is easier to test, debug, maintain, and extend. Complexity
+is a cost that must be consciously accepted, not accidentally accumulated.
+
+## Development Workflow
+
+**Mandatory Process:**
+1. Write test case(s) describing expected behavior
+2. Verify test(s) fail (Red phase)
+3. Implement minimal code to pass tests (Green phase)
+4. Refactor while maintaining passing tests (Refactor phase)
+5. Review for readability and simplicity before committing
+
+**Code Review Checklist:**
+- Does every new function have corresponding tests?
+- Can a new developer understand this code without extensive context?
+- Is this the simplest solution that meets the requirement?
+
+## Quality Gates
+
+**Before Implementation:**
+- Test cases written and reviewed
+- Tests demonstrate failure without implementation
+
+**Before Merge:**
+- All tests pass
+- Code follows readability standards
+- No unnecessary complexity introduced
+- No commented-out code or debug statements
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes all other development practices for the Swim-Check
+project. All contributions MUST comply with these principles.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Amendment Procedure:**
+1. Propose amendment with rationale
+2. Document impact on existing code
+3. Update constitution with new version number
+4. Propagate changes to dependent templates
+
+**Versioning Policy:**
+- MAJOR: Principle removal or fundamental redefinition
+- MINOR: New principle added or existing guidance materially expanded
+- PATCH: Clarifications, wording improvements, non-semantic changes
+
+**Compliance Review:**
+- All pull requests MUST be verified against Core Principles
+- Violations require explicit justification in the PR description
+- Unjustified violations block merge
+
+**Version**: 1.0.0 | **Ratified**: 2026-01-30 | **Last Amended**: 2026-01-30

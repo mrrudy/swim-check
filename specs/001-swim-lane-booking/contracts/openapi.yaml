@@ -1,0 +1,551 @@
+openapi: 3.1.0
+info:
+  title: Swim Lane Booking Checker API
+  description: REST API for checking swimming lane availability at pools
+  version: 1.0.0
+  contact:
+    name: Swim-Check
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Development server
+
+tags:
+  - name: Pools
+    description: Swimming pool management
+  - name: Availability
+    description: Lane availability queries
+  - name: Favorites
+    description: User favorite pools
+  - name: Preferences
+    description: User preferences
+
+paths:
+  /pools:
+    get:
+      tags: [Pools]
+      summary: List all swimming pools
+      operationId: listPools
+      parameters:
+        - name: search
+          in: query
+          description: Search by name or location
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Maximum number of results
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 100
+        - name: offset
+          in: query
+          description: Offset for pagination
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        '200':
+          description: List of pools
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pools:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SwimmingPool'
+                  total:
+                    type: integer
+                    description: Total number of pools matching query
+                required:
+                  - pools
+                  - total
+
+  /pools/{poolId}:
+    get:
+      tags: [Pools]
+      summary: Get a specific pool
+      operationId: getPool
+      parameters:
+        - $ref: '#/components/parameters/PoolId'
+      responses:
+        '200':
+          description: Pool details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SwimmingPool'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /pools/{poolId}/availability:
+    get:
+      tags: [Availability]
+      summary: Get lane availability for a pool
+      description: |
+        Returns lane availability for the specified pool, date, and time slot.
+        Data is cached for 5 minutes. The `dataFreshness` field indicates cache status.
+      operationId: getPoolAvailability
+      parameters:
+        - $ref: '#/components/parameters/PoolId'
+        - name: date
+          in: query
+          required: true
+          description: Date to check availability (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+            example: "2026-01-30"
+        - name: startTime
+          in: query
+          required: true
+          description: Start time of slot (HH:MM)
+          schema:
+            type: string
+            pattern: '^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$'
+            example: "14:00"
+        - name: endTime
+          in: query
+          required: true
+          description: End time of slot (HH:MM)
+          schema:
+            type: string
+            pattern: '^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$'
+            example: "15:30"
+        - name: refresh
+          in: query
+          description: Force refresh from source (bypass cache)
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Lane availability
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PoolAvailability'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          description: Scraper unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PoolAvailability'
+
+  /favorites:
+    get:
+      tags: [Favorites]
+      summary: List favorite pools
+      operationId: listFavorites
+      responses:
+        '200':
+          description: List of favorite pools
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  favorites:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FavoritePool'
+                required:
+                  - favorites
+
+    post:
+      tags: [Favorites]
+      summary: Add pool to favorites
+      operationId: addFavorite
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                poolId:
+                  type: string
+                  format: uuid
+              required:
+                - poolId
+      responses:
+        '201':
+          description: Pool added to favorites
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FavoritePool'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Pool already in favorites
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /favorites/{poolId}:
+    delete:
+      tags: [Favorites]
+      summary: Remove pool from favorites
+      operationId: removeFavorite
+      parameters:
+        - $ref: '#/components/parameters/PoolId'
+      responses:
+        '204':
+          description: Pool removed from favorites
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /favorites/reorder:
+    put:
+      tags: [Favorites]
+      summary: Reorder favorite pools
+      operationId: reorderFavorites
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                order:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  description: Pool IDs in desired order
+              required:
+                - order
+      responses:
+        '200':
+          description: Favorites reordered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  favorites:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FavoritePool'
+
+  /preferences:
+    get:
+      tags: [Preferences]
+      summary: Get user preferences
+      operationId: getPreferences
+      responses:
+        '200':
+          description: User preferences
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPreferences'
+
+    patch:
+      tags: [Preferences]
+      summary: Update user preferences
+      operationId: updatePreferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                slotDurationMins:
+                  type: integer
+                  minimum: 30
+                  maximum: 480
+                  multipleOf: 30
+                  description: Default slot duration in minutes
+      responses:
+        '200':
+          description: Updated preferences
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPreferences'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /preferences/default-time-slot:
+    get:
+      tags: [Preferences]
+      summary: Get smart default time slot
+      description: |
+        Returns a calculated default time slot based on:
+        - Start time: current time + 30 minutes, rounded down to nearest half hour
+        - End time: start time + user's preferred duration (default 1 hour)
+      operationId: getDefaultTimeSlot
+      responses:
+        '200':
+          description: Default time slot
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  date:
+                    type: string
+                    format: date
+                  startTime:
+                    type: string
+                    pattern: '^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$'
+                  endTime:
+                    type: string
+                    pattern: '^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$'
+                  durationMins:
+                    type: integer
+                required:
+                  - date
+                  - startTime
+                  - endTime
+                  - durationMins
+
+  /health:
+    get:
+      summary: Health check
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy, degraded]
+                  timestamp:
+                    type: string
+                    format: date-time
+                  scrapers:
+                    type: object
+                    properties:
+                      healthy:
+                        type: integer
+                      unhealthy:
+                        type: integer
+
+components:
+  parameters:
+    PoolId:
+      name: poolId
+      in: path
+      required: true
+      description: Pool unique identifier
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    SwimmingPool:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        location:
+          type: string
+          minLength: 1
+          maxLength: 500
+        websiteUrl:
+          type: string
+          format: uri
+        totalLanes:
+          type: integer
+          minimum: 1
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - location
+        - websiteUrl
+        - totalLanes
+
+    Lane:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        poolId:
+          type: string
+          format: uuid
+        laneNumber:
+          type: integer
+          minimum: 1
+        label:
+          type: string
+          maxLength: 50
+      required:
+        - id
+        - poolId
+        - laneNumber
+
+    LaneAvailability:
+      type: object
+      properties:
+        laneId:
+          type: string
+          format: uuid
+        laneNumber:
+          type: integer
+          minimum: 1
+        label:
+          type: string
+        isAvailable:
+          type: boolean
+        lastUpdated:
+          type: string
+          format: date-time
+      required:
+        - laneId
+        - laneNumber
+        - isAvailable
+        - lastUpdated
+
+    PoolAvailability:
+      type: object
+      properties:
+        pool:
+          $ref: '#/components/schemas/SwimmingPool'
+        date:
+          type: string
+          format: date
+        timeSlot:
+          type: object
+          properties:
+            startTime:
+              type: string
+            endTime:
+              type: string
+          required:
+            - startTime
+            - endTime
+        lanes:
+          type: array
+          items:
+            $ref: '#/components/schemas/LaneAvailability'
+        dataFreshness:
+          type: string
+          enum: [fresh, cached, stale, unavailable]
+          description: |
+            - fresh: Just scraped from source
+            - cached: From cache, within TTL
+            - stale: From cache, but expired (scraper failed)
+            - unavailable: No data available
+        scrapedAt:
+          type: string
+          format: date-time
+          description: When data was last scraped
+        availableLaneCount:
+          type: integer
+          description: Number of available lanes
+        totalLaneCount:
+          type: integer
+          description: Total number of lanes
+      required:
+        - pool
+        - date
+        - timeSlot
+        - lanes
+        - dataFreshness
+        - availableLaneCount
+        - totalLaneCount
+
+    FavoritePool:
+      type: object
+      properties:
+        pool:
+          $ref: '#/components/schemas/SwimmingPool'
+        addedAt:
+          type: string
+          format: date-time
+        displayOrder:
+          type: integer
+          minimum: 0
+      required:
+        - pool
+        - addedAt
+        - displayOrder
+
+    UserPreferences:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        slotDurationMins:
+          type: integer
+          minimum: 30
+          maximum: 480
+          default: 60
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - slotDurationMins
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Machine-readable error code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          description: Additional error details
+      required:
+        - code
+        - message
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: "INVALID_TIME_FORMAT"
+            message: "startTime must be in HH:MM format"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: "POOL_NOT_FOUND"
+            message: "Pool with id 'abc123' not found"
