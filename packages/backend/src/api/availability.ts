@@ -82,7 +82,9 @@ availabilityRouter.get('/:poolId/availability', asyncHandler(async (req: Request
       timeSlot: availability.timeSlot,
       lanes: availability.lanes,
       dataFreshness: availability.dataFreshness,
-      scrapedAt: availability.scrapedAt?.toISOString(),
+      scrapedAt: availability.scrapedAt instanceof Date
+        ? availability.scrapedAt.toISOString()
+        : availability.scrapedAt,
       availableLaneCount: availability.availableLaneCount,
       totalLaneCount: availability.totalLaneCount,
     };

@@ -23,7 +23,22 @@
       "Bash(npx vitest:*)",
       "Bash(./node_modules/.bin/vitest run:*)",
       "Bash(node ./node_modules/vitest/vitest.mjs run:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "WebFetch(domain:docs.google.com)",
+      "WebFetch(domain:doc-0s-8k-sheets.googleusercontent.com)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_press_key",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_close",
+      "Bash(npx tsc:*)",
+      "Bash(curl:*)",
+      "mcp__playwright__browser_fill_form",
+      "mcp__playwright__browser_select_option",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_network_requests"
     ]
   }
 }

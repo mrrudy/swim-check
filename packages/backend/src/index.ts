@@ -4,6 +4,7 @@
 
 import express from 'express';
 import cors from 'cors';
+import { config, validateConfig } from './config.js';
 import { initializeDatabase, getDatabase, saveDatabase } from './db/schema.js';
 import { errorHandler } from './api/routes.js';
 import { healthRouter } from './api/health.js';
@@ -14,10 +15,11 @@ import { preferencesRouter } from './api/preferences.js';
 import { scraperRegistry } from './scrapers/registry.js';
 import { examplePoolScraper, EXAMPLE_POOL_ID } from './scrapers/pools/example/index.js';
 import { aquaparkWroclawScraper, AQUAPARK_POOL_ID } from './scrapers/pools/aquapark-wroclaw-borowska/index.js';
+import { slezaCentrumScraper, SLEZA_POOL_ID } from './scrapers/pools/sleza-centrum/index.js';
 import { createLanesForPool, getPoolById } from './db/queries.js';
 
-const PORT = process.env.PORT || 3000;
-const DB_PATH = process.env.DB_PATH || './swim-check.db';
+// Validate configuration at startup
+validateConfig();
 
 async function seedPool(
   poolId: string,
@@ -67,12 +69,23 @@ async function seedPools() {
   );
   scraperRegistry.register(aquaparkWroclawScraper);
   console.log('Registered Aquapark Wrocław scraper');
+
+  // Seed Centrum Ślęża
+  await seedPool(
+    SLEZA_POOL_ID,
+    'Centrum Ślęża - Basen Sportowy',
+    'ul. Sportowa 1, Sobótka',
+    'https://www.centrumsleza.pl/grafiki/',
+    6
+  );
+  scraperRegistry.register(slezaCentrumScraper);
+  console.log('Registered Centrum Ślęża scraper');
 }
 
 async function main() {
   // Initialize database
-  await initializeDatabase(DB_PATH);
-  console.log(`Database initialized at ${DB_PATH}`);
+  await initializeDatabase(config.dbPath);
+  console.log(`Database initialized at ${config.dbPath}`);
 
   // Seed pools and register scrapers
   await seedPools();
@@ -97,9 +110,9 @@ async function main() {
   app.use(errorHandler);
 
   // Start server
-  app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-    console.log(`API available at http://localhost:${PORT}/api/v1`);
+  app.listen(config.port, () => {
+    console.log(`Server running on http://localhost:${config.port}`);
+    console.log(`API available at http://localhost:${config.port}/api/v1`);
   });
 }
 
