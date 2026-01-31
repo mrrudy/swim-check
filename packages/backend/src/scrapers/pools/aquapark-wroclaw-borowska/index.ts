@@ -5,7 +5,7 @@
 
 import type { PoolScraper } from '../../types.js';
 import type { TimeSlot, LaneAvailability } from '@swim-check/shared';
-import { parsePdfText, filterSlotsForTimeSlot } from './parser.js';
+import { parsePdfBuffer, filterSlotsForTimeSlot } from './parser.js';
 import { getLanesByPoolId } from '../../../db/queries.js';
 import * as cheerio from 'cheerio';
 
@@ -42,13 +42,12 @@ export class AquaparkWroclawScraper implements PoolScraper {
 
       // Step 2: Download and parse the PDF
       const pdfBuffer = await this.downloadPdf(pdfUrl);
-      const pdfText = await this.extractPdfText(pdfBuffer);
 
-      // Step 3: Parse the PDF content
-      const parsedSlots = parsePdfText(pdfText, date);
+      // Step 3: Parse the PDF content with position awareness
+      const parsedSchedule = await parsePdfBuffer(pdfBuffer);
 
       // Step 4: Filter for the requested time slot
-      return filterSlotsForTimeSlot(parsedSlots, timeSlot, laneIds);
+      return filterSlotsForTimeSlot(parsedSchedule, date, timeSlot, laneIds);
     } catch (error) {
       console.error('Error fetching Aquapark availability:', error);
       // Return default availability on error
@@ -125,13 +124,6 @@ export class AquaparkWroclawScraper implements PoolScraper {
 
     const arrayBuffer = await response.arrayBuffer();
     return Buffer.from(arrayBuffer);
-  }
-
-  private async extractPdfText(buffer: Buffer): Promise<string> {
-    // Dynamic import for pdf-parse (CommonJS module)
-    const pdfParse = (await import('pdf-parse')).default;
-    const data = await pdfParse(buffer);
-    return data.text;
   }
 
   private getDefaultAvailability(laneIds: Map<number, string>): LaneAvailability[] {
