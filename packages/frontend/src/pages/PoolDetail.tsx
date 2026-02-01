@@ -7,6 +7,8 @@ import { useParams, Link } from 'react-router-dom';
 import { TimeSlotPicker } from '../components/TimeSlotPicker';
 import { LaneGrid } from '../components/LaneGrid';
 import { FavoriteButton } from '../components/FavoriteButton';
+import { SlotNavigationButtons } from '../components/SlotNavigationButtons';
+import { useSlotNavigation } from '../hooks/useSlotNavigation';
 import { api } from '../services/api';
 import type { SwimmingPool, LaneAvailability } from '@swim-check/shared';
 
@@ -83,6 +85,14 @@ const styles = {
     textAlign: 'center',
     color: '#666',
   } as React.CSSProperties,
+  navigationContainer: {
+    outline: 'none',
+  } as React.CSSProperties,
+  navigationContainerFocused: {
+    outline: '2px solid #0066cc',
+    outlineOffset: '2px',
+    borderRadius: '8px',
+  } as React.CSSProperties,
 };
 
 const freshnessColors: Record<DataFreshness, string> = {
@@ -107,6 +117,16 @@ export function PoolDetail() {
   const [error, setError] = useState<string | null>(null);
   const [timeParams, setTimeParams] = useState<{ date: string; startTime: string; endTime: string } | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [hasFocus, setHasFocus] = useState(false);
+
+  // Slot navigation hook - initialized when timeParams are available
+  const navigation = useSlotNavigation({
+    initialStartTime: timeParams?.startTime || '14:00',
+    initialDuration: 60, // Default 1 hour
+    onSlotChange: useCallback((startTime: string, endTime: string, _duration: number) => {
+      setTimeParams((prev) => prev ? { ...prev, startTime, endTime } : null);
+    }, []),
+  });
 
   // Fetch pool details and check if favorite
   useEffect(() => {
@@ -211,6 +231,32 @@ export function PoolDetail() {
       </div>
 
       <TimeSlotPicker onChange={handleTimeChange} />
+
+      {/* Slot Navigation - keyboard and button controls */}
+      <div
+        tabIndex={0}
+        onKeyDown={navigation.handleKeyDown}
+        onFocus={() => setHasFocus(true)}
+        onBlur={() => setHasFocus(false)}
+        style={{
+          ...styles.navigationContainer,
+          ...(hasFocus ? styles.navigationContainerFocused : {}),
+        }}
+      >
+        <SlotNavigationButtons
+          startTime={navigation.startTime}
+          endTime={navigation.endTime}
+          duration={navigation.duration}
+          canNavigatePrevious={navigation.canNavigatePrevious}
+          canNavigateNext={navigation.canNavigateNext}
+          canExtend={navigation.canExtend}
+          canReduce={navigation.canReduce}
+          onNavigatePrevious={navigation.navigatePrevious}
+          onNavigateNext={navigation.navigateNext}
+          onExtend={navigation.extendDuration}
+          onReduce={navigation.reduceDuration}
+        />
+      </div>
 
       <div style={styles.actions}>
         <button onClick={handleRefresh} style={styles.refreshButton} disabled={loading}>

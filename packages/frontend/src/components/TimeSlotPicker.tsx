@@ -134,7 +134,7 @@ function getDefaultEndTime(startTime: string, durationMins = 60): string {
   return `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
 }
 
-const TIME_OPTIONS = generateTimeOptions();
+export const TIME_OPTIONS = generateTimeOptions();
 
 export function TimeSlotPicker({
   initialDate,

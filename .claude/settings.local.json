@@ -11,6 +11,7 @@
       "Bash(wc:*)",
       "Bash(du:*)",
       "Bash(cat:*)",
+      "Bash(cd:*)",
       "Bash(pnpm install:*)",
       "Bash(npm install:*)",
       "Bash(powershell:*)",

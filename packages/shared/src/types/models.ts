@@ -73,3 +73,86 @@ export interface PoolAvailability {
   availableLaneCount: number;
   totalLaneCount: number;
 }
+
+// ==========================================
+// Slot Navigation Types (002-slot-navigation)
+// ==========================================
+
+/**
+ * Represents the current state of slot navigation in the UI
+ */
+export interface SlotNavigationState {
+  /** Index into TIME_OPTIONS array (0-34) */
+  currentSlotIndex: number;
+
+  /** Currently selected start time (HH:MM) */
+  startTime: string;
+
+  /** Currently selected end time (HH:MM) */
+  endTime: string;
+
+  /** Current duration in minutes (30-480) */
+  duration: number;
+
+  /** Whether the availability view container has keyboard focus */
+  hasFocus: boolean;
+}
+
+/**
+ * Computed boundaries for navigation actions
+ */
+export interface NavigationBoundaries {
+  /** Can navigate to previous slot (not at first slot) */
+  canNavigatePrevious: boolean;
+
+  /** Can navigate to next slot (not at last valid slot) */
+  canNavigateNext: boolean;
+
+  /** Can extend duration (won't exceed closing/conflict) */
+  canExtend: boolean;
+
+  /** Can reduce duration (duration > 30 minutes) */
+  canReduce: boolean;
+
+  /** Reason if extend is blocked */
+  extendBlockedReason?: 'pool_closing' | 'booking_conflict';
+}
+
+/**
+ * Actions that can be performed on slot navigation
+ */
+export interface SlotNavigationCallbacks {
+  navigatePrevious: () => void;
+  navigateNext: () => void;
+  extendDuration: () => void;
+  reduceDuration: () => void;
+  handleKeyDown: (event: React.KeyboardEvent) => void;
+  setFocus: (hasFocus: boolean) => void;
+}
+
+/** Pool operating hours and slot constants */
+export const SLOT_CONSTANTS = {
+  /** First available time slot */
+  FIRST_SLOT: '05:00',
+
+  /** Last available time slot (pool closing) */
+  LAST_SLOT: '22:00',
+
+  /** Minimum booking duration in minutes */
+  MIN_DURATION: 30,
+
+  /** Maximum booking duration in minutes */
+  MAX_DURATION: 480, // 8 hours
+
+  /** Duration adjustment step in minutes */
+  DURATION_STEP: 30,
+
+  /** Total number of time slots */
+  SLOT_COUNT: 35, // (22-5)*2 + 1
+
+  /** First slot index */
+  FIRST_SLOT_INDEX: 0,
+
+  /** Last slot index */
+  LAST_SLOT_INDEX: 34,
+} as const;
