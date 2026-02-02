@@ -3,67 +3,75 @@ import { renderHook, act } from '@testing-library/react';
 import { useSlotNavigation } from './useSlotNavigation';
 
 describe('useSlotNavigation', () => {
-  const defaultProps = {
-    initialStartTime: '10:00',
-    initialDuration: 60,
-    onSlotChange: vi.fn(),
-  };
+  // Helper to create default controlled props
+  const createDefaultProps = (overrides = {}) => ({
+    startTime: '10:00',
+    duration: 60,
+    onNavigate: vi.fn(),
+    ...overrides,
+  });
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   // ==========================================
-  // User Story 1: Navigate Between Slots (T007-T011)
+  // User Story 1: Navigate Between Slots
   // ==========================================
 
   describe('US1: navigation', () => {
-    // T007: navigateNext moves to next slot
-    it('should move to next slot on navigateNext', () => {
-      const { result } = renderHook(() => useSlotNavigation(defaultProps));
+    it('should call onNavigate with next slot on navigateNext', () => {
+      const onNavigate = vi.fn();
+      const { result } = renderHook(() =>
+        useSlotNavigation(createDefaultProps({ onNavigate }))
+      );
 
       act(() => result.current.navigateNext());
 
-      expect(result.current.startTime).toBe('10:30');
+      expect(onNavigate).toHaveBeenCalledWith('10:30', '11:30', 60);
     });
 
-    // T008: navigatePrevious moves to previous slot
-    it('should move to previous slot on navigatePrevious', () => {
-      const { result } = renderHook(() => useSlotNavigation(defaultProps));
+    it('should call onNavigate with previous slot on navigatePrevious', () => {
+      const onNavigate = vi.fn();
+      const { result } = renderHook(() =>
+        useSlotNavigation(createDefaultProps({ onNavigate }))
+      );
 
       act(() => result.current.navigatePrevious());
 
-      expect(result.current.startTime).toBe('09:30');
+      expect(onNavigate).toHaveBeenCalledWith('09:30', '10:30', 60);
     });
 
-    // T009: canNavigateNext is false at last slot (22:00)
     it('should not allow navigating past last slot (22:00)', () => {
       const { result } = renderHook(() =>
-        useSlotNavigation({
-          ...defaultProps,
-          initialStartTime: '22:00',
-          initialDuration: 30, // Minimum duration at end
-        })
+        useSlotNavigation(
+          createDefaultProps({
+            startTime: '22:00',
+            duration: 30,
+          })
+        )
       );
 
       expect(result.current.canNavigateNext).toBe(false);
     });
 
-    // T010: canNavigatePrevious is false at first slot (05:00)
     it('should not allow navigating before first slot (05:00)', () => {
       const { result } = renderHook(() =>
-        useSlotNavigation({
-          ...defaultProps,
-          initialStartTime: '05:00',
-        })
+        useSlotNavigation(
+          createDefaultProps({
+            startTime: '05:00',
+          })
+        )
       );
 
       expect(result.current.canNavigatePrevious).toBe(false);
     });
 
-    // T011: handleKeyDown responds to ArrowLeft/ArrowRight
     it('should respond to ArrowRight key', () => {
-      const { result } = renderHook(() => useSlotNavigation(defaultProps));
+      const onNavigate = vi.fn();
+      const { result } = renderHook(() =>
+        useSlotNavigation(createDefaultProps({ onNavigate }))
+      );
 
       act(() => {
         result.current.handleKeyDown({
@@ -72,11 +80,14 @@ describe('useSlotNavigation', () => {
         } as unknown as React.KeyboardEvent);
       });
 
-      expect(result.current.startTime).toBe('10:30');
+      expect(onNavigate).toHaveBeenCalledWith('10:30', '11:30', 60);
     });
 
     it('should respond to ArrowLeft key', () => {
-      const { result } = renderHook(() => useSlotNavigation(defaultProps));
+      const onNavigate = vi.fn();
+      const { result } = renderHook(() =>
+        useSlotNavigation(createDefaultProps({ onNavigate }))
+      );
 
       act(() => {
         result.current.handleKeyDown({
@@ -85,79 +96,70 @@ describe('useSlotNavigation', () => {
         } as unknown as React.KeyboardEvent);
       });
 
-      expect(result.current.startTime).toBe('09:30');
+      expect(onNavigate).toHaveBeenCalledWith('09:30', '10:30', 60);
     });
 
-    it('should call onSlotChange when navigating', () => {
-      const onSlotChange = vi.fn();
+    it('should compute endTime based on startTime and duration', () => {
       const { result } = renderHook(() =>
-        useSlotNavigation({ ...defaultProps, onSlotChange })
-      );
-
-      act(() => result.current.navigateNext());
-
-      expect(onSlotChange).toHaveBeenCalledWith('10:30', '11:30', 60);
-    });
-
-    it('should recalculate endTime based on duration when navigating', () => {
-      const { result } = renderHook(() =>
-        useSlotNavigation({
-          ...defaultProps,
-          initialStartTime: '10:00',
-          initialDuration: 90,
-        })
+        useSlotNavigation(
+          createDefaultProps({
+            startTime: '10:00',
+            duration: 90,
+          })
+        )
       );
 
       expect(result.current.endTime).toBe('11:30');
+    });
 
-      act(() => result.current.navigateNext());
+    it('should compute currentSlotIndex from startTime', () => {
+      const { result } = renderHook(() =>
+        useSlotNavigation(
+          createDefaultProps({
+            startTime: '10:00',
+          })
+        )
+      );
 
-      expect(result.current.startTime).toBe('10:30');
-      expect(result.current.endTime).toBe('12:00');
+      // 10:00 is index 10 (5 hours from 05:00, at 30-min intervals = 10 slots)
+      expect(result.current.currentSlotIndex).toBe(10);
     });
   });
 
   // ==========================================
-  // User Story 2: Extend Duration (T025-T028)
+  // User Story 2: Extend Duration
   // ==========================================
 
   describe('US2: extend duration', () => {
-    // T025: extendDuration increases duration by 30 minutes
-    it('should extend duration by 30 minutes', () => {
-      const { result } = renderHook(() => useSlotNavigation(defaultProps));
+    it('should call onNavigate with extended duration', () => {
+      const onNavigate = vi.fn();
+      const { result } = renderHook(() =>
+        useSlotNavigation(createDefaultProps({ onNavigate }))
+      );
 
       act(() => result.current.extendDuration());
 
-      expect(result.current.duration).toBe(90);
+      expect(onNavigate).toHaveBeenCalledWith('10:00', '11:30', 90);
     });
 
-    // T026: extendDuration updates endTime correctly
-    it('should update endTime correctly when extending', () => {
-      const { result } = renderHook(() => useSlotNavigation(defaultProps));
-
-      expect(result.current.endTime).toBe('11:00');
-
-      act(() => result.current.extendDuration());
-
-      expect(result.current.endTime).toBe('11:30');
-    });
-
-    // T027: canExtend is false when endTime would exceed 22:00
     it('should not allow extending past pool closing (22:00)', () => {
       const { result } = renderHook(() =>
-        useSlotNavigation({
-          ...defaultProps,
-          initialStartTime: '21:30',
-          initialDuration: 30,
-        })
+        useSlotNavigation(
+          createDefaultProps({
+            startTime: '21:30',
+            duration: 30,
+          })
+        )
       );
 
       expect(result.current.canExtend).toBe(false);
     });
 
-    // T028: handleKeyDown responds to ArrowDown for extend
     it('should respond to ArrowDown key for extend', () => {
-      const { result } = renderHook(() => useSlotNavigation(defaultProps));
+      const onNavigate = vi.fn();
+      const { result } = renderHook(() =>
+        useSlotNavigation(createDefaultProps({ onNavigate }))
+      );
 
       act(() => {
         result.current.handleKeyDown({
@@ -166,50 +168,43 @@ describe('useSlotNavigation', () => {
         } as unknown as React.KeyboardEvent);
       });
 
-      expect(result.current.duration).toBe(90);
+      expect(onNavigate).toHaveBeenCalledWith('10:00', '11:30', 90);
     });
   });
 
   // ==========================================
-  // User Story 3: Reduce Duration (T038-T041)
+  // User Story 3: Reduce Duration
   // ==========================================
 
   describe('US3: reduce duration', () => {
-    // T038: reduceDuration decreases duration by 30 minutes
-    it('should reduce duration by 30 minutes', () => {
-      const { result } = renderHook(() => useSlotNavigation(defaultProps));
+    it('should call onNavigate with reduced duration', () => {
+      const onNavigate = vi.fn();
+      const { result } = renderHook(() =>
+        useSlotNavigation(createDefaultProps({ onNavigate }))
+      );
 
       act(() => result.current.reduceDuration());
 
-      expect(result.current.duration).toBe(30);
+      expect(onNavigate).toHaveBeenCalledWith('10:00', '10:30', 30);
     });
 
-    // T039: reduceDuration updates endTime correctly
-    it('should update endTime correctly when reducing', () => {
-      const { result } = renderHook(() => useSlotNavigation(defaultProps));
-
-      expect(result.current.endTime).toBe('11:00');
-
-      act(() => result.current.reduceDuration());
-
-      expect(result.current.endTime).toBe('10:30');
-    });
-
-    // T040: canReduce is false when duration is 30 (minimum)
     it('should not allow reducing below minimum duration (30)', () => {
       const { result } = renderHook(() =>
-        useSlotNavigation({
-          ...defaultProps,
-          initialDuration: 30,
-        })
+        useSlotNavigation(
+          createDefaultProps({
+            duration: 30,
+          })
+        )
       );
 
       expect(result.current.canReduce).toBe(false);
     });
 
-    // T041: handleKeyDown responds to ArrowUp for reduce
     it('should respond to ArrowUp key for reduce', () => {
-      const { result } = renderHook(() => useSlotNavigation(defaultProps));
+      const onNavigate = vi.fn();
+      const { result } = renderHook(() =>
+        useSlotNavigation(createDefaultProps({ onNavigate }))
+      );
 
       act(() => {
         result.current.handleKeyDown({
@@ -218,55 +213,59 @@ describe('useSlotNavigation', () => {
         } as unknown as React.KeyboardEvent);
       });
 
-      expect(result.current.duration).toBe(30);
+      expect(onNavigate).toHaveBeenCalledWith('10:00', '10:30', 30);
     });
   });
 
   // ==========================================
-  // Edge cases and integration
+  // Edge cases and controlled state
   // ==========================================
 
   describe('edge cases', () => {
     it('should handle boundary navigation at end of day', () => {
-      const { result } = renderHook(() =>
-        useSlotNavigation({
-          ...defaultProps,
-          initialStartTime: '21:30',
-          initialDuration: 30,
-        })
+      const { result: result1 } = renderHook(() =>
+        useSlotNavigation(
+          createDefaultProps({
+            startTime: '21:30',
+            duration: 30,
+          })
+        )
       );
 
-      // Cannot navigate next at 21:30 with 30min duration (would go to 22:00 start)
-      expect(result.current.canNavigateNext).toBe(true);
+      // Can navigate next at 21:30 with 30min duration (would go to 22:00 start)
+      expect(result1.current.canNavigateNext).toBe(true);
 
-      act(() => result.current.navigateNext());
+      // At 22:00, cannot navigate further
+      const { result: result2 } = renderHook(() =>
+        useSlotNavigation(
+          createDefaultProps({
+            startTime: '22:00',
+            duration: 30,
+          })
+        )
+      );
 
-      // Now at 22:00, cannot navigate further
-      expect(result.current.startTime).toBe('22:00');
-      expect(result.current.canNavigateNext).toBe(false);
+      expect(result2.current.canNavigateNext).toBe(false);
     });
 
-    it('should clamp endTime to 22:00 when extending near closing', () => {
+    it('should clamp endTime to 22:00 when computing', () => {
       const { result } = renderHook(() =>
-        useSlotNavigation({
-          ...defaultProps,
-          initialStartTime: '21:00',
-          initialDuration: 30,
-        })
+        useSlotNavigation(
+          createDefaultProps({
+            startTime: '21:00',
+            duration: 90, // Would extend past 22:00
+          })
+        )
       );
-
-      act(() => result.current.extendDuration());
 
       expect(result.current.endTime).toBe('22:00');
     });
 
-    it('should not modify state for unhandled keys', () => {
-      const { result } = renderHook(() => useSlotNavigation(defaultProps));
-
-      const initialState = {
-        startTime: result.current.startTime,
-        duration: result.current.duration,
-      };
+    it('should not call onNavigate for unhandled keys', () => {
+      const onNavigate = vi.fn();
+      const { result } = renderHook(() =>
+        useSlotNavigation(createDefaultProps({ onNavigate }))
+      );
 
       act(() => {
         result.current.handleKeyDown({
@@ -275,8 +274,110 @@ describe('useSlotNavigation', () => {
         } as unknown as React.KeyboardEvent);
       });
 
-      expect(result.current.startTime).toBe(initialState.startTime);
-      expect(result.current.duration).toBe(initialState.duration);
+      expect(onNavigate).not.toHaveBeenCalled();
+    });
+
+    it('should not call onNavigate when cannot navigate previous', () => {
+      const onNavigate = vi.fn();
+      const { result } = renderHook(() =>
+        useSlotNavigation(
+          createDefaultProps({
+            startTime: '05:00',
+            onNavigate,
+          })
+        )
+      );
+
+      act(() => result.current.navigatePrevious());
+
+      expect(onNavigate).not.toHaveBeenCalled();
+    });
+
+    it('should not call onNavigate when cannot navigate next', () => {
+      const onNavigate = vi.fn();
+      const { result } = renderHook(() =>
+        useSlotNavigation(
+          createDefaultProps({
+            startTime: '22:00',
+            duration: 30,
+            onNavigate,
+          })
+        )
+      );
+
+      act(() => result.current.navigateNext());
+
+      expect(onNavigate).not.toHaveBeenCalled();
+    });
+
+    it('should not call onNavigate when cannot extend', () => {
+      const onNavigate = vi.fn();
+      const { result } = renderHook(() =>
+        useSlotNavigation(
+          createDefaultProps({
+            startTime: '21:30',
+            duration: 30,
+            onNavigate,
+          })
+        )
+      );
+
+      act(() => result.current.extendDuration());
+
+      expect(onNavigate).not.toHaveBeenCalled();
+    });
+
+    it('should not call onNavigate when cannot reduce', () => {
+      const onNavigate = vi.fn();
+      const { result } = renderHook(() =>
+        useSlotNavigation(
+          createDefaultProps({
+            duration: 30,
+            onNavigate,
+          })
+        )
+      );
+
+      act(() => result.current.reduceDuration());
+
+      expect(onNavigate).not.toHaveBeenCalled();
+    });
+  });
+
+  // ==========================================
+  // Controlled state pass-through
+  // ==========================================
+
+  describe('controlled state', () => {
+    it('should return startTime from props', () => {
+      const { result } = renderHook(() =>
+        useSlotNavigation(createDefaultProps({ startTime: '15:00' }))
+      );
+
+      expect(result.current.startTime).toBe('15:00');
+    });
+
+    it('should return duration from props', () => {
+      const { result } = renderHook(() =>
+        useSlotNavigation(createDefaultProps({ duration: 120 }))
+      );
+
+      expect(result.current.duration).toBe(120);
+    });
+
+    it('should update when props change', () => {
+      const { result, rerender } = renderHook(
+        (props) => useSlotNavigation(props),
+        { initialProps: createDefaultProps({ startTime: '10:00' }) }
+      );
+
+      expect(result.current.startTime).toBe('10:00');
+      expect(result.current.currentSlotIndex).toBe(10);
+
+      rerender(createDefaultProps({ startTime: '12:00' }));
+
+      expect(result.current.startTime).toBe('12:00');
+      expect(result.current.currentSlotIndex).toBe(14);
     });
   });
 });

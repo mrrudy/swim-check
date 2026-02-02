@@ -1,14 +1,17 @@
 /**
  * PoolDetail page - Combines TimeSlotPicker and LaneGrid with API integration
+ * Uses unified state management for synchronized time slot selection
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { TimeSlotPicker } from '../components/TimeSlotPicker';
 import { LaneGrid } from '../components/LaneGrid';
 import { FavoriteButton } from '../components/FavoriteButton';
 import { SlotNavigationButtons } from '../components/SlotNavigationButtons';
 import { useSlotNavigation } from '../hooks/useSlotNavigation';
+import { useTimeSlotState } from '../hooks/useTimeSlotState';
+import { useDebounceRefresh } from '../hooks/useDebounceRefresh';
 import { api } from '../services/api';
 import type { SwimmingPool, LaneAvailability } from '@swim-check/shared';
 
@@ -61,6 +64,15 @@ const styles = {
     borderRadius: '4px',
     cursor: 'pointer',
   } as React.CSSProperties,
+  refreshButtonDisabled: {
+    padding: '8px 16px',
+    fontSize: '14px',
+    backgroundColor: '#ccc',
+    color: '#666',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'not-allowed',
+  } as React.CSSProperties,
   freshness: {
     display: 'flex',
     alignItems: 'center',
@@ -93,6 +105,33 @@ const styles = {
     outlineOffset: '2px',
     borderRadius: '8px',
   } as React.CSSProperties,
+  staleIndicator: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '8px 12px',
+    backgroundColor: '#fff3cd',
+    border: '1px solid #ffc107',
+    borderRadius: '4px',
+    fontSize: '12px',
+    color: '#856404',
+    marginBottom: '16px',
+  } as React.CSSProperties,
+  refreshingOverlay: {
+    position: 'relative',
+  } as React.CSSProperties,
+  refreshingIndicator: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    padding: '8px 16px',
+    backgroundColor: 'rgba(0, 102, 204, 0.9)',
+    color: '#fff',
+    borderRadius: '4px',
+    fontSize: '14px',
+    zIndex: 10,
+  } as React.CSSProperties,
 };
 
 const freshnessColors: Record<DataFreshness, string> = {
@@ -113,26 +152,83 @@ export function PoolDetail() {
   const { poolId } = useParams<{ poolId: string }>();
   const [pool, setPool] = useState<SwimmingPool | null>(null);
   const [availability, setAvailability] = useState<AvailabilityState | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loadingPool, setLoadingPool] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [timeParams, setTimeParams] = useState<{ date: string; startTime: string; endTime: string } | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [hasFocus, setHasFocus] = useState(false);
 
-  // Slot navigation hook - initialized when timeParams are available
+  // AbortController for canceling in-flight requests (FR-009)
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Unified time slot state management - single source of truth
+  const timeSlotState = useTimeSlotState();
+  const { state, setDate, setStartTime, setEndTime, handleNavigation, isInitialized } = timeSlotState;
+
+  // Slot navigation - controlled by unified state
   const navigation = useSlotNavigation({
-    initialStartTime: timeParams?.startTime || '14:00',
-    initialDuration: 60, // Default 1 hour
-    onSlotChange: useCallback((startTime: string, endTime: string, _duration: number) => {
-      setTimeParams((prev) => prev ? { ...prev, startTime, endTime } : null);
-    }, []),
+    startTime: state.startTime,
+    duration: state.duration,
+    onNavigate: handleNavigation,
+  });
+
+  // Fetch availability function with AbortController support
+  const fetchAvailability = useCallback(
+    async (forceRefresh = false) => {
+      if (!poolId || !isInitialized) return;
+
+      // Cancel any in-flight request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
+
+      setError(null);
+
+      try {
+        const result = await api.getPoolAvailability(
+          poolId,
+          state.date,
+          state.startTime,
+          state.endTime,
+          forceRefresh
+        );
+
+        // Check if this request was aborted
+        if (abortControllerRef.current?.signal.aborted) {
+          return;
+        }
+
+        setAvailability({
+          lanes: result.lanes,
+          dataFreshness: result.dataFreshness,
+          scrapedAt: result.scrapedAt,
+          availableLaneCount: result.availableLaneCount,
+          totalLaneCount: result.totalLaneCount,
+        });
+      } catch (err) {
+        // Ignore abort errors
+        if ((err as Error).name === 'AbortError') {
+          return;
+        }
+        setError((err as Error).message);
+      }
+    },
+    [poolId, state.date, state.startTime, state.endTime, isInitialized]
+  );
+
+  // Debounced auto-refresh - triggers 2s after last time slot change
+  const { isRefreshing, refreshNow } = useDebounceRefresh({
+    timeSlotState: state,
+    onRefresh: () => fetchAvailability(false),
+    delay: 2000,
+    isInitialized,
   });
 
   // Fetch pool details and check if favorite
   useEffect(() => {
     if (!poolId) return;
 
-    setLoading(true);
+    setLoadingPool(true);
     setError(null);
 
     Promise.all([
@@ -144,57 +240,23 @@ export function PoolDetail() {
         setIsFavorite(favData.favorites.some((f) => f.pool.id === poolId));
       })
       .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+      .finally(() => setLoadingPool(false));
   }, [poolId]);
 
-  // Fetch availability when time params change
-  const fetchAvailability = useCallback(
-    async (forceRefresh = false) => {
-      if (!poolId || !timeParams) return;
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        const result = await api.getPoolAvailability(
-          poolId,
-          timeParams.date,
-          timeParams.startTime,
-          timeParams.endTime,
-          forceRefresh
-        );
-
-        setAvailability({
-          lanes: result.lanes,
-          dataFreshness: result.dataFreshness,
-          scrapedAt: result.scrapedAt,
-          availableLaneCount: result.availableLaneCount,
-          totalLaneCount: result.totalLaneCount,
-        });
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [poolId, timeParams]
-  );
-
+  // Cleanup abort controller on unmount
   useEffect(() => {
-    if (timeParams) {
-      fetchAvailability();
-    }
-  }, [fetchAvailability, timeParams]);
-
-  const handleTimeChange = useCallback((date: string, startTime: string, endTime: string) => {
-    setTimeParams({ date, startTime, endTime });
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, []);
 
   const handleRefresh = () => {
-    fetchAvailability(true);
+    refreshNow();
   };
 
-  if (loading && !pool) {
+  if (loadingPool && !pool) {
     return <div style={styles.loading}>Loading pool...</div>;
   }
 
@@ -208,6 +270,8 @@ export function PoolDetail() {
       </div>
     );
   }
+
+  const isLoading = loadingPool || isRefreshing;
 
   return (
     <div style={styles.container}>
@@ -230,7 +294,16 @@ export function PoolDetail() {
         )}
       </div>
 
-      <TimeSlotPicker onChange={handleTimeChange} />
+      {/* Time Slot Picker - controlled by unified state */}
+      <TimeSlotPicker
+        date={state.date}
+        startTime={state.startTime}
+        endTime={state.endTime}
+        onDateChange={setDate}
+        onStartTimeChange={setStartTime}
+        onEndTimeChange={setEndTime}
+        disabled={isLoading}
+      />
 
       {/* Slot Navigation - keyboard and button controls */}
       <div
@@ -259,8 +332,12 @@ export function PoolDetail() {
       </div>
 
       <div style={styles.actions}>
-        <button onClick={handleRefresh} style={styles.refreshButton} disabled={loading}>
-          {loading ? 'Refreshing...' : 'Refresh'}
+        <button
+          onClick={handleRefresh}
+          style={isLoading ? styles.refreshButtonDisabled : styles.refreshButton}
+          disabled={isLoading}
+        >
+          {isRefreshing ? 'Refreshing...' : 'Refresh'}
         </button>
 
         {availability && (
@@ -281,9 +358,25 @@ export function PoolDetail() {
         )}
       </div>
 
+      {/* Stale data indicator */}
+      {availability?.dataFreshness === 'stale' && (
+        <div style={styles.staleIndicator}>
+          <span>⚠</span>
+          <span>Data may be outdated. Click Refresh for latest availability.</span>
+        </div>
+      )}
+
       {error && <div style={styles.error}>{error}</div>}
 
-      {availability && <LaneGrid lanes={availability.lanes} loading={loading} />}
+      {/* Lane grid with loading overlay */}
+      <div style={styles.refreshingOverlay}>
+        {isRefreshing && availability && (
+          <div style={styles.refreshingIndicator as React.CSSProperties}>
+            Updating...
+          </div>
+        )}
+        {availability && <LaneGrid lanes={availability.lanes} loading={isRefreshing} />}
+      </div>
     </div>
   );
 }
