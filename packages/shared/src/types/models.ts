@@ -130,6 +130,63 @@ export interface SlotNavigationCallbacks {
   setFocus: (hasFocus: boolean) => void;
 }
 
+// ==========================================
+// Scrape Job Types (003-midnight-rescrape)
+// ==========================================
+
+/**
+ * Tracks the state and history of scrape operations for each pool
+ */
+export interface ScrapeJob {
+  poolId: string;
+  lastScrapeDate: string | null; // YYYY-MM-DD
+  lastScrapeTimestamp: Date | null;
+  lastScrapeStatus: 'success' | 'failure' | null;
+  lastErrorMessage: string | null;
+}
+
+/**
+ * Runtime-only state for preventing concurrent scrapes (not persisted)
+ */
+export interface ScrapeState {
+  poolId: string;
+  inProgress: boolean;
+  startedAt: Date | null;
+}
+
+/**
+ * Scrape result for logging/reporting
+ */
+export interface ScrapeResult {
+  poolId: string;
+  poolName: string;
+  success: boolean;
+  duration: number; // milliseconds
+  errorMessage?: string;
+  retriesUsed: number;
+}
+
+/**
+ * Scheduler status for API response
+ */
+export interface SchedulerStatus {
+  isRunning: boolean;
+  nextScheduledRun: Date | null;
+  lastRunTimestamp: Date | null;
+  poolStatuses: PoolScrapeStatus[];
+}
+
+/**
+ * Per-pool scrape status for scheduler status response
+ */
+export interface PoolScrapeStatus {
+  poolId: string;
+  poolName: string;
+  lastScrapeDate: string | null;
+  lastScrapeStatus: 'success' | 'failure' | null;
+  inProgress: boolean;
+}
+
 /** Pool operating hours and slot constants */
 export const SLOT_CONSTANTS = {
   /** First available time slot */

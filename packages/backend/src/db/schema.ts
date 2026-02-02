@@ -75,11 +75,34 @@ CREATE TABLE IF NOT EXISTS cache_entries (
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Scrape job tracking
+CREATE TABLE IF NOT EXISTS scrape_jobs (
+    pool_id TEXT PRIMARY KEY REFERENCES swimming_pools(id) ON DELETE CASCADE,
+    last_scrape_date TEXT,
+    last_scrape_timestamp TEXT,
+    last_scrape_status TEXT CHECK(last_scrape_status IN ('success', 'failure')),
+    last_error_message TEXT
+);
+
 -- Indexes for common queries
 CREATE INDEX IF NOT EXISTS idx_lane_bookings_date ON lane_bookings(date);
 CREATE INDEX IF NOT EXISTS idx_lane_bookings_pool_date ON lane_bookings(lane_id, date);
 CREATE INDEX IF NOT EXISTS idx_cache_expires ON cache_entries(expires_at);
 CREATE INDEX IF NOT EXISTS idx_favorite_pools_order ON favorite_pools(preference_id, display_order);
+CREATE INDEX IF NOT EXISTS idx_scrape_jobs_date ON scrape_jobs(last_scrape_date);
+`;
+
+// Migrations for existing databases (003-midnight-rescrape)
+const MIGRATIONS = `
+-- Add scrape_jobs table if it doesn't exist (003-midnight-rescrape)
+CREATE TABLE IF NOT EXISTS scrape_jobs (
+    pool_id TEXT PRIMARY KEY REFERENCES swimming_pools(id) ON DELETE CASCADE,
+    last_scrape_date TEXT,
+    last_scrape_timestamp TEXT,
+    last_scrape_status TEXT CHECK(last_scrape_status IN ('success', 'failure')),
+    last_error_message TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_scrape_jobs_date ON scrape_jobs(last_scrape_date);
 `;
 
 export async function initializeDatabase(path: string): Promise<SqlJsDatabase> {
@@ -89,6 +112,9 @@ export async function initializeDatabase(path: string): Promise<SqlJsDatabase> {
   if (existsSync(path)) {
     const buffer = readFileSync(path);
     db = new SQL.Database(buffer);
+    // Run migrations for existing databases
+    db.run(MIGRATIONS);
+    saveDatabase();
   } else {
     db = new SQL.Database();
     db.run(SCHEMA);

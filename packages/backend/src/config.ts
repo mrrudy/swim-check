@@ -19,6 +19,11 @@ export interface Config {
   port: number;
   dbPath: string;
   googleSheetsApiKey: string | undefined;
+  // Scheduler config (003-midnight-rescrape)
+  schedulerEnabled: boolean;
+  scrapeRetryCount: number;
+  scrapeDelayMinMs: number;
+  scrapeDelayMaxMs: number;
 }
 
 function loadConfig(): Config {
@@ -26,6 +31,11 @@ function loadConfig(): Config {
     port: parseInt(process.env.PORT || '3000', 10),
     dbPath: process.env.DB_PATH || './swim-check.db',
     googleSheetsApiKey: process.env.GOOGLE_SHEETS_API_KEY,
+    // Scheduler config (003-midnight-rescrape)
+    schedulerEnabled: process.env.SCHEDULER_ENABLED !== 'false',
+    scrapeRetryCount: parseInt(process.env.SCRAPE_RETRY_COUNT || '3', 10),
+    scrapeDelayMinMs: parseInt(process.env.SCRAPE_DELAY_MIN_MS || '2000', 10),
+    scrapeDelayMaxMs: parseInt(process.env.SCRAPE_DELAY_MAX_MS || '6000', 10),
   };
 }
 

@@ -12,11 +12,15 @@ import { poolsRouter } from './api/pools.js';
 import { availabilityRouter } from './api/availability.js';
 import { favoritesRouter } from './api/favorites.js';
 import { preferencesRouter } from './api/preferences.js';
+import { adminRouter } from './api/admin.js';
 import { scraperRegistry } from './scrapers/registry.js';
 import { examplePoolScraper, EXAMPLE_POOL_ID } from './scrapers/pools/example/index.js';
 import { aquaparkWroclawScraper, AQUAPARK_POOL_ID } from './scrapers/pools/aquapark-wroclaw-borowska/index.js';
 import { slezaCentrumScraper, SLEZA_POOL_ID } from './scrapers/pools/sleza-centrum/index.js';
 import { createLanesForPool, getPoolById } from './db/queries.js';
+import { startScheduler, checkAndScrapeOnStartup } from './services/scheduler.js';
+import { scrapeAllPools } from './services/scrapeOrchestrator.js';
+import { resetAllScrapeStates } from './services/scrapeState.js';
 
 // Validate configuration at startup
 validateConfig();
@@ -90,6 +94,28 @@ async function main() {
   // Seed pools and register scrapers
   await seedPools();
 
+  // Reset scrape states on startup (003-midnight-rescrape)
+  resetAllScrapeStates();
+  console.log('[Scheduler] Scrape states reset on startup');
+
+  // Check if today's data needs scraping and start scheduler (003-midnight-rescrape)
+  const startupCheck = await checkAndScrapeOnStartup();
+  if (startupCheck.needsScrape) {
+    console.log('[Scheduler] Triggering startup scrape...');
+    // Run scrape in background (don't block server startup)
+    scrapeAllPools(startupCheck.poolIds).catch((err) => {
+      console.error('[Scheduler] Startup scrape failed:', err);
+    });
+  }
+
+  // Start midnight scheduler
+  startScheduler(() => {
+    console.log('[Scheduler] Midnight trigger - starting scrape');
+    scrapeAllPools().catch((err) => {
+      console.error('[Scheduler] Midnight scrape failed:', err);
+    });
+  });
+
   const app = express();
 
   // Middleware
@@ -103,6 +129,7 @@ async function main() {
   apiRouter.use('/pools', availabilityRouter);
   apiRouter.use('/favorites', favoritesRouter);
   apiRouter.use('/preferences', preferencesRouter);
+  apiRouter.use('/admin', adminRouter);
 
   app.use('/api/v1', apiRouter);
 

@@ -21,6 +21,7 @@
       "Bash(npm ls:*)",
       "Bash(npm test:*)",
       "Bash(npx vitest run)",
+      "Bash(npm ls vitest:*)",
       "Bash(npx vitest:*)",
       "Bash(./node_modules/.bin/vitest run:*)",
       "Bash(node ./node_modules/vitest/vitest.mjs run:*)",
@@ -39,7 +40,14 @@
       "mcp__playwright__browser_fill_form",
       "mcp__playwright__browser_select_option",
       "mcp__playwright__browser_snapshot",
-      "mcp__playwright__browser_network_requests"
+      "mcp__playwright__browser_network_requests",
+      "Bash(npm run test:*)",
+      "Bash(npm run build:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(cmd /c \"taskkill /PID 51392 /F\")",
+      "Bash(cmd /c \"tasklist /FI \"\"PID eq 51392\"\"\")"
     ]
   }
 }

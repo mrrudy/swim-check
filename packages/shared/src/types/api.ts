@@ -90,3 +90,53 @@ export interface HealthResponse {
     unhealthy: number;
   };
 }
+
+// ==========================================
+// Admin API Types (003-midnight-rescrape)
+// ==========================================
+
+/**
+ * Response for POST /admin/rescrape
+ */
+export interface RescrapeResponse {
+  message: string;
+  pools: PoolInfo[];
+}
+
+/**
+ * Pool info for rescrape response
+ */
+export interface PoolInfo {
+  poolId: string;
+  poolName: string;
+}
+
+/**
+ * Response for GET /admin/scheduler/status
+ */
+export interface SchedulerStatusResponse {
+  isRunning: boolean;
+  nextScheduledRun: string | null; // ISO 8601
+  lastRunTimestamp: string | null; // ISO 8601
+  poolStatuses: PoolScrapeStatusResponse[];
+}
+
+/**
+ * Per-pool scrape status in scheduler status response
+ */
+export interface PoolScrapeStatusResponse {
+  poolId: string;
+  poolName: string;
+  lastScrapeDate: string | null; // YYYY-MM-DD
+  lastScrapeStatus: 'success' | 'failure' | null;
+  inProgress: boolean;
+}
+
+/**
+ * Error response for admin endpoints
+ */
+export interface AdminErrorResponse {
+  error: string;
+  poolId?: string;
+  details?: string;
+}

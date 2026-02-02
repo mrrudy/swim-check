@@ -1,0 +1,209 @@
+openapi: 3.0.3
+info:
+  title: Swim-Check Admin API - Rescrape Endpoints
+  description: API endpoints for manual rescrape triggering and scheduler status
+  version: 1.0.0
+
+servers:
+  - url: /api/v1
+    description: API v1
+
+paths:
+  /admin/rescrape:
+    post:
+      summary: Trigger manual rescrape
+      description: |
+        Triggers an immediate rescrape of pool booking data.
+        - Without poolId: Rescrapes all configured pools
+        - With poolId: Rescrapes only the specified pool
+
+        Returns 409 Conflict if a scrape is already in progress for the requested pool(s).
+      operationId: triggerRescrape
+      tags:
+        - Admin
+      parameters:
+        - name: poolId
+          in: query
+          required: false
+          description: Specific pool ID to rescrape. If omitted, all pools are rescraped.
+          schema:
+            type: string
+            format: uuid
+            example: "00000000-0000-0000-0000-000000000002"
+      responses:
+        '200':
+          description: Rescrape initiated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RescrapeResponse'
+              example:
+                message: "Rescrape started"
+                pools:
+                  - poolId: "00000000-0000-0000-0000-000000000002"
+                    poolName: "Aquapark Wrocław"
+                  - poolId: "00000000-0000-0000-0000-000000000003"
+                    poolName: "Centrum Ślęża"
+        '404':
+          description: Pool not found (when poolId specified)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Pool not found"
+                poolId: "invalid-pool-id"
+        '409':
+          description: Scrape already in progress
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Scrape already in progress"
+                poolId: "00000000-0000-0000-0000-000000000002"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/scheduler/status:
+    get:
+      summary: Get scheduler status
+      description: |
+        Returns the current status of the midnight rescrape scheduler,
+        including next scheduled run time and per-pool scrape status.
+      operationId: getSchedulerStatus
+      tags:
+        - Admin
+      responses:
+        '200':
+          description: Scheduler status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchedulerStatusResponse'
+              example:
+                isRunning: true
+                nextScheduledRun: "2026-02-02T00:00:00.000Z"
+                lastRunTimestamp: "2026-02-01T00:00:15.000Z"
+                poolStatuses:
+                  - poolId: "00000000-0000-0000-0000-000000000002"
+                    poolName: "Aquapark Wrocław"
+                    lastScrapeDate: "2026-02-01"
+                    lastScrapeStatus: "success"
+                    inProgress: false
+                  - poolId: "00000000-0000-0000-0000-000000000003"
+                    poolName: "Centrum Ślęża"
+                    lastScrapeDate: "2026-02-01"
+                    lastScrapeStatus: "success"
+                    inProgress: false
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    RescrapeResponse:
+      type: object
+      required:
+        - message
+        - pools
+      properties:
+        message:
+          type: string
+          description: Status message
+          example: "Rescrape started"
+        pools:
+          type: array
+          description: List of pools being rescraped
+          items:
+            $ref: '#/components/schemas/PoolInfo'
+
+    PoolInfo:
+      type: object
+      required:
+        - poolId
+        - poolName
+      properties:
+        poolId:
+          type: string
+          format: uuid
+          description: Pool unique identifier
+        poolName:
+          type: string
+          description: Pool display name
+
+    SchedulerStatusResponse:
+      type: object
+      required:
+        - isRunning
+        - poolStatuses
+      properties:
+        isRunning:
+          type: boolean
+          description: Whether the scheduler is active
+        nextScheduledRun:
+          type: string
+          format: date-time
+          nullable: true
+          description: Next scheduled midnight rescrape (ISO 8601)
+        lastRunTimestamp:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp of last scheduler run (ISO 8601)
+        poolStatuses:
+          type: array
+          description: Per-pool scrape status
+          items:
+            $ref: '#/components/schemas/PoolScrapeStatus'
+
+    PoolScrapeStatus:
+      type: object
+      required:
+        - poolId
+        - poolName
+        - inProgress
+      properties:
+        poolId:
+          type: string
+          format: uuid
+          description: Pool unique identifier
+        poolName:
+          type: string
+          description: Pool display name
+        lastScrapeDate:
+          type: string
+          format: date
+          nullable: true
+          description: Date of last successful scrape (YYYY-MM-DD)
+        lastScrapeStatus:
+          type: string
+          enum: [success, failure]
+          nullable: true
+          description: Result of last scrape attempt
+        inProgress:
+          type: boolean
+          description: Whether scrape is currently running for this pool
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error message
+        poolId:
+          type: string
+          format: uuid
+          description: Related pool ID (when applicable)
+        details:
+          type: string
+          description: Additional error details
