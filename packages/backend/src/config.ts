@@ -16,6 +16,7 @@ const rootEnvPath = resolve(import.meta.dirname, '..', '..', '..', '.env');
 dotenvConfig({ path: rootEnvPath });
 
 export interface Config {
+  host: string;
   port: number;
   dbPath: string;
   googleSheetsApiKey: string | undefined;
@@ -28,6 +29,7 @@ export interface Config {
 
 function loadConfig(): Config {
   return {
+    host: process.env.HOST || 'localhost',
     port: parseInt(process.env.PORT || '3000', 10),
     dbPath: process.env.DB_PATH || './swim-check.db',
     googleSheetsApiKey: process.env.GOOGLE_SHEETS_API_KEY,

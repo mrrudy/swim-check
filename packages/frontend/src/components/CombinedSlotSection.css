@@ -1,0 +1,91 @@
+/**
+ * CombinedSlotSection styles
+ * 007-favorites-combined-view (T016)
+ */
+
+.combined-slot-section {
+  margin-bottom: 24px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
+  background-color: #fff;
+}
+
+.slot-header {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e0e0e0;
+  color: #333;
+}
+
+.favorite-pool-row {
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.favorite-pool-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.pool-name-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.pool-name {
+  font-weight: 500;
+  font-size: 1rem;
+  color: #333;
+}
+
+/* Freshness badges */
+.freshness-badge {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.freshness-fresh {
+  background-color: #e6f7e6;
+  color: #2e7d32;
+}
+
+.freshness-cached {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.freshness-stale {
+  background-color: #ffe5d0;
+  color: #c35500;
+}
+
+.freshness-unavailable {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+/* State indicators */
+.all-failed-message,
+.error-message,
+.unavailable-message {
+  color: #666;
+  font-style: italic;
+  padding: 8px 0;
+}
+
+.error-message {
+  color: #c62828;
+}
+
+.loading-indicator {
+  color: #888;
+  padding: 8px 0;
+}

@@ -13,6 +13,8 @@ Auto-generated from all feature plans. Last updated: 2026-01-30
 - Backend REST API `/api/v1/preferences` endpoint (existing pattern for duration preferences) (005-pool-view-options)
 - TypeScript 5.3.3 (Node.js 20 LTS for backend, React 18 for frontend) + React 18.2.0, React Router DOM 6.21.3, Vite 5.0.12, Express.js 4.18.2 (006-scraping-status-view)
 - SQLite via sql.js (./swim-check.db) - existing scrape_jobs table (006-scraping-status-view)
+- TypeScript 5.3.3 (Node.js 20 LTS backend, React 18 frontend) + React 18.2.0, React Router DOM 6.21.3, Vite 5.0.12, Express.js 4.18.2 (007-favorites-combined-view)
+- SQLite via sql.js (`./swim-check.db`) - existing tables sufficient (007-favorites-combined-view)
 
 - TypeScript (Node.js 20 LTS) for backend; TypeScript for frontend + Express.js (REST API), React 18 (frontend), Cheerio/Puppeteer (web scraping) (001-swim-lane-booking)
 
@@ -33,9 +35,9 @@ npm test; npm run lint
 TypeScript (Node.js 20 LTS) for backend; TypeScript for frontend: Follow standard conventions
 
 ## Recent Changes
+- 007-favorites-combined-view: Added TypeScript 5.3.3 (Node.js 20 LTS backend, React 18 frontend) + React 18.2.0, React Router DOM 6.21.3, Vite 5.0.12, Express.js 4.18.2
 - 006-scraping-status-view: Added TypeScript 5.3.3 (Node.js 20 LTS for backend, React 18 for frontend) + React 18.2.0, React Router DOM 6.21.3, Vite 5.0.12, Express.js 4.18.2
 - 005-pool-view-options: Added TypeScript 5.3.3, React 18.2.0 (frontend only feature) + React 18.2.0, React Router DOM 6.21.3, Vite 5.0.12, @swim-check/shared (monorepo types)
-- 004-slot-sync-autorefresh: Added TypeScript 5.3.3, React 18.2.0 + React 18.2.0, React Router DOM 6.21.3, Vite 5.0.12
 
 
 <!-- MANUAL ADDITIONS START -->

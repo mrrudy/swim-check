@@ -8,6 +8,7 @@
       "WebFetch(domain:scrapfly.io)",
       "WebFetch(domain:www.scraperapi.com)",
       "Bash(ls:*)",
+      "Bash(ls -d:*)",
       "Bash(wc:*)",
       "Bash(du:*)",
       "Bash(cat:*)",
@@ -49,7 +50,6 @@
       "Bash(cmd /c \"taskkill /PID 51392 /F\")",
       "Bash(cmd /c \"tasklist /FI \"\"PID eq 51392\"\"\")",
       "Bash(powershell.exe -File:*)",
-      "Bash(powershell.exe -ExecutionPolicy Bypass -File .specify/scripts/powershell/create-new-feature.ps1 -Json -Number 5 -ShortName \"pool-view-options\" \"Frontend pool view with compact lane percentage bar and multi-slot forward view options\")",
       "Bash(npm run lint:*)"
     ]
   }

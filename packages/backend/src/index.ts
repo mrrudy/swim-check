@@ -137,9 +137,9 @@ async function main() {
   app.use(errorHandler);
 
   // Start server
-  app.listen(config.port, () => {
-    console.log(`Server running on http://localhost:${config.port}`);
-    console.log(`API available at http://localhost:${config.port}/api/v1`);
+  app.listen(config.port, config.host, () => {
+    console.log(`Server running on http://${config.host}:${config.port}`);
+    console.log(`API available at http://${config.host}:${config.port}/api/v1`);
   });
 }
 
