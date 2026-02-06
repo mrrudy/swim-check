@@ -10,6 +10,7 @@ import type {
   UserPreferencesResponse,
   DefaultTimeSlotResponse,
   HealthResponse,
+  SchedulerStatusResponse,
   ApiError,
 } from '@swim-check/shared';
 import type { SwimmingPool } from '@swim-check/shared';
@@ -110,6 +111,11 @@ class ApiClient {
 
   async getDefaultTimeSlot(): Promise<DefaultTimeSlotResponse> {
     return this.fetch<DefaultTimeSlotResponse>('/preferences/default-time-slot');
+  }
+
+  // Admin - Scraping Status (006-scraping-status-view)
+  async getScrapingStatus(): Promise<SchedulerStatusResponse> {
+    return this.fetch<SchedulerStatusResponse>('/admin/scheduler/status');
   }
 }
 

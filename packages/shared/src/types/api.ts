@@ -100,6 +100,14 @@ export interface HealthResponse {
 // ==========================================
 
 /**
+ * A URL used for scraping pool data (006-scraping-status-view)
+ */
+export interface SourceLink {
+  url: string;
+  label: string;
+}
+
+/**
  * Response for POST /admin/rescrape
  */
 export interface RescrapeResponse {
@@ -127,13 +135,17 @@ export interface SchedulerStatusResponse {
 
 /**
  * Per-pool scrape status in scheduler status response
+ * Extended in 006-scraping-status-view with timestamp, error message, and source URLs
  */
 export interface PoolScrapeStatusResponse {
   poolId: string;
   poolName: string;
   lastScrapeDate: string | null; // YYYY-MM-DD
+  lastScrapeTimestamp: string | null; // ISO 8601 full timestamp (006-scraping-status-view)
   lastScrapeStatus: 'success' | 'failure' | null;
+  lastErrorMessage: string | null; // Error message if failed (006-scraping-status-view)
   inProgress: boolean;
+  sourceUrls: SourceLink[]; // Scraping source links (006-scraping-status-view)
 }
 
 /**

@@ -114,10 +114,13 @@ export async function scrapePool(poolId: string): Promise<ScrapeResult> {
         const timeSlot = { startTime: '05:00', endTime: '22:00' };
         await scraper.fetchAvailability(new Date(), timeSlot);
 
+        // Get resolved source URLs if the scraper supports it (006-scraping-status-view)
+        const resolvedSourceUrls = scraper.getResolvedSourceUrls?.();
+
         // Success!
         const duration = Date.now() - startTime;
         console.log(`[Orchestrator] Successfully scraped ${poolName} in ${duration}ms`);
-        markScrapeSuccess(poolId, todayDate);
+        markScrapeSuccess(poolId, todayDate, resolvedSourceUrls);
 
         return {
           poolId,

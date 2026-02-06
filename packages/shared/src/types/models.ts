@@ -135,6 +135,15 @@ export interface SlotNavigationCallbacks {
 // ==========================================
 
 /**
+ * A resolved source URL discovered during scraping (006-scraping-status-view)
+ * Unlike static sourceUrls on the scraper, these are discovered at runtime
+ */
+export interface ResolvedSourceLink {
+  url: string;
+  label: string;
+}
+
+/**
  * Tracks the state and history of scrape operations for each pool
  */
 export interface ScrapeJob {
@@ -143,6 +152,7 @@ export interface ScrapeJob {
   lastScrapeTimestamp: Date | null;
   lastScrapeStatus: 'success' | 'failure' | null;
   lastErrorMessage: string | null;
+  resolvedSourceUrls: ResolvedSourceLink[] | null; // 006-scraping-status-view: URLs discovered during scraping
 }
 
 /**

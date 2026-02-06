@@ -133,6 +133,22 @@ function runViewPreferencesMigration(database: SqlJsDatabase): void {
   }
 }
 
+/**
+ * Migration for resolved source URLs (006-scraping-status-view)
+ * Adds resolved_source_urls column to scrape_jobs table
+ */
+function runResolvedSourceUrlsMigration(database: SqlJsDatabase): void {
+  const tableInfo = database.exec('PRAGMA table_info(scrape_jobs)');
+  if (!tableInfo[0]) return;
+
+  const columns = tableInfo[0].values.map((row) => row[1] as string);
+
+  // Add resolved_source_urls if missing (stored as JSON string)
+  if (!columns.includes('resolved_source_urls')) {
+    database.run('ALTER TABLE scrape_jobs ADD COLUMN resolved_source_urls TEXT');
+  }
+}
+
 export async function initializeDatabase(path: string): Promise<SqlJsDatabase> {
   const SQL = await initSqlJs();
   dbPath = path;
@@ -144,6 +160,8 @@ export async function initializeDatabase(path: string): Promise<SqlJsDatabase> {
     db.run(MIGRATIONS);
     // Run view preferences migration (005-pool-view-options)
     runViewPreferencesMigration(db);
+    // Run resolved source URLs migration (006-scraping-status-view)
+    runResolvedSourceUrlsMigration(db);
     saveDatabase();
   } else {
     db = new SQL.Database();

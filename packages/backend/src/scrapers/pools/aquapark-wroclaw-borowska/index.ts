@@ -4,7 +4,7 @@
  */
 
 import type { PoolScraper } from '../../types.js';
-import type { TimeSlot, LaneAvailability } from '@swim-check/shared';
+import type { TimeSlot, LaneAvailability, ResolvedSourceLink } from '@swim-check/shared';
 import { parsePdfBuffer, filterSlotsForTimeSlot } from './parser.js';
 import { getLanesByPoolId } from '../../../db/queries.js';
 import * as cheerio from 'cheerio';
@@ -18,6 +18,12 @@ export class AquaparkWroclawScraper implements PoolScraper {
   readonly poolId = AQUAPARK_POOL_ID;
   readonly name = 'aquapark-wroclaw-borowska';
   readonly version = '1.0.0';
+  readonly sourceUrls = [
+    { url: AQUAPARK_SCHEDULE_URL, label: 'Schedule Page' },
+  ];
+
+  // Track the last resolved PDF URL (006-scraping-status-view)
+  private lastResolvedPdfUrl: string | null = null;
 
   async fetchAvailability(date: Date, timeSlot: TimeSlot): Promise<LaneAvailability[]> {
     const lanes = getLanesByPoolId(this.poolId);
@@ -36,9 +42,13 @@ export class AquaparkWroclawScraper implements PoolScraper {
 
       if (!pdfUrl) {
         console.warn('Could not find PDF URL on schedule page');
+        this.lastResolvedPdfUrl = null;
         // Return default availability
         return this.getDefaultAvailability(laneIds);
       }
+
+      // Track the discovered PDF URL (006-scraping-status-view)
+      this.lastResolvedPdfUrl = pdfUrl;
 
       // Step 2: Download and parse the PDF
       const pdfBuffer = await this.downloadPdf(pdfUrl);
@@ -134,6 +144,18 @@ export class AquaparkWroclawScraper implements PoolScraper {
       isAvailable: true, // Assume available when we can't fetch data
       lastUpdated: now,
     }));
+  }
+
+  /**
+   * Get the resolved PDF URL discovered during the last scrape (006-scraping-status-view)
+   */
+  getResolvedSourceUrls(): ResolvedSourceLink[] | undefined {
+    if (!this.lastResolvedPdfUrl) {
+      return undefined;
+    }
+    return [
+      { url: this.lastResolvedPdfUrl, label: 'PDF Schedule' },
+    ];
   }
 }
 

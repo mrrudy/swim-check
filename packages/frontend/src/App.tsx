@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { Home } from './pages/Home';
 import { Search } from './pages/Search';
 import { PoolDetail } from './pages/PoolDetail';
+import { ScrapingStatus } from './pages/ScrapingStatus';
 
 const styles = {
   app: {
@@ -52,6 +53,9 @@ export function App() {
             <Link to="/search" style={styles.navLink}>
               Search Pools
             </Link>
+            <Link to="/scraping-status" style={styles.navLink}>
+              Scraping Status
+            </Link>
           </nav>
         </header>
         <main>
@@ -59,6 +63,7 @@ export function App() {
             <Route path="/" element={<Home />} />
             <Route path="/search" element={<Search />} />
             <Route path="/pools/:poolId" element={<PoolDetail />} />
+            <Route path="/scraping-status" element={<ScrapingStatus />} />
           </Routes>
         </main>
       </div>

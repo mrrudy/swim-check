@@ -196,6 +196,10 @@ export class SlezaCentrumScraper implements PoolScraper {
   readonly poolId = SLEZA_POOL_ID;
   readonly name = 'sleza-centrum';
   readonly version = '1.0.0';
+  readonly sourceUrls = [
+    { url: SLEZA_SCHEDULE_PAGE_URL, label: 'Schedule Page' },
+    { url: `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEETS_CONFIG.SPREADSHEET_ID}`, label: 'Google Sheets' },
+  ];
 
   async fetchAvailability(date: Date, timeSlot: TimeSlot): Promise<LaneAvailability[]> {
     const lanes = getLanesByPoolId(this.poolId);

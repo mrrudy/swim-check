@@ -3,7 +3,7 @@
  */
 
 import { getDatabase, saveDatabase } from './schema.js';
-import type { ScrapeJob } from '@swim-check/shared';
+import type { ScrapeJob, ResolvedSourceLink } from '@swim-check/shared';
 
 export interface ScrapeJobRow {
   pool_id: string;
@@ -11,15 +11,26 @@ export interface ScrapeJobRow {
   last_scrape_timestamp: string | null;
   last_scrape_status: 'success' | 'failure' | null;
   last_error_message: string | null;
+  resolved_source_urls: string | null; // JSON string (006-scraping-status-view)
 }
 
 function rowToScrapeJob(row: ScrapeJobRow): ScrapeJob {
+  let resolvedSourceUrls: ResolvedSourceLink[] | null = null;
+  if (row.resolved_source_urls) {
+    try {
+      resolvedSourceUrls = JSON.parse(row.resolved_source_urls) as ResolvedSourceLink[];
+    } catch {
+      resolvedSourceUrls = null;
+    }
+  }
+
   return {
     poolId: row.pool_id,
     lastScrapeDate: row.last_scrape_date,
     lastScrapeTimestamp: row.last_scrape_timestamp ? new Date(row.last_scrape_timestamp) : null,
     lastScrapeStatus: row.last_scrape_status,
     lastErrorMessage: row.last_error_message,
+    resolvedSourceUrls,
   };
 }
 
@@ -97,16 +108,21 @@ export function getPoolsNeedingScrapeToday(todayDate: string): string[] {
 export function upsertScrapeJob(job: ScrapeJob): void {
   const db = getDatabase();
 
+  const resolvedSourceUrlsJson = job.resolvedSourceUrls
+    ? JSON.stringify(job.resolvedSourceUrls)
+    : null;
+
   db.run(
     `INSERT OR REPLACE INTO scrape_jobs
-     (pool_id, last_scrape_date, last_scrape_timestamp, last_scrape_status, last_error_message)
-     VALUES (?, ?, ?, ?, ?)`,
+     (pool_id, last_scrape_date, last_scrape_timestamp, last_scrape_status, last_error_message, resolved_source_urls)
+     VALUES (?, ?, ?, ?, ?, ?)`,
     [
       job.poolId,
       job.lastScrapeDate,
       job.lastScrapeTimestamp?.toISOString() ?? null,
       job.lastScrapeStatus,
       job.lastErrorMessage,
+      resolvedSourceUrlsJson,
     ]
   );
   saveDatabase();
@@ -114,14 +130,20 @@ export function upsertScrapeJob(job: ScrapeJob): void {
 
 /**
  * Update scrape job with success status
+ * @param resolvedSourceUrls - URLs discovered during scraping (006-scraping-status-view)
  */
-export function markScrapeSuccess(poolId: string, date: string): void {
+export function markScrapeSuccess(
+  poolId: string,
+  date: string,
+  resolvedSourceUrls?: ResolvedSourceLink[]
+): void {
   upsertScrapeJob({
     poolId,
     lastScrapeDate: date,
     lastScrapeTimestamp: new Date(),
     lastScrapeStatus: 'success',
     lastErrorMessage: null,
+    resolvedSourceUrls: resolvedSourceUrls ?? null,
   });
 }
 
@@ -135,5 +157,6 @@ export function markScrapeFailure(poolId: string, date: string, errorMessage: st
     lastScrapeTimestamp: new Date(),
     lastScrapeStatus: 'failure',
     lastErrorMessage: errorMessage,
+    resolvedSourceUrls: null,
   });
 }

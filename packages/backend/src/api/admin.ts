@@ -137,6 +137,7 @@ adminRouter.post(
 /**
  * GET /admin/scheduler/status
  * Get current scheduler status and per-pool scrape status
+ * Extended in 006-scraping-status-view with timestamp, error message, and source URLs
  */
 adminRouter.get(
   '/scheduler/status',
@@ -150,12 +151,21 @@ adminRouter.get(
       const scrapeJob = getScrapeJob(scraper.poolId);
       const scrapeState = getScrapeState(scraper.poolId);
 
+      // Merge static source URLs with resolved source URLs (006-scraping-status-view)
+      // Resolved URLs (e.g., discovered PDF link) take precedence and are shown first
+      const staticUrls = scraper.sourceUrls ?? [];
+      const resolvedUrls = scrapeJob?.resolvedSourceUrls ?? [];
+      const mergedSourceUrls = [...resolvedUrls, ...staticUrls];
+
       return {
         poolId: scraper.poolId,
         poolName: pool?.name ?? 'Unknown',
         lastScrapeDate: scrapeJob?.lastScrapeDate ?? null,
+        lastScrapeTimestamp: scrapeJob?.lastScrapeTimestamp?.toISOString() ?? null, // 006-scraping-status-view
         lastScrapeStatus: scrapeJob?.lastScrapeStatus ?? null,
+        lastErrorMessage: scrapeJob?.lastErrorMessage ?? null, // 006-scraping-status-view
         inProgress: scrapeState.inProgress,
+        sourceUrls: mergedSourceUrls, // 006-scraping-status-view: includes both resolved and static URLs
       };
     });
 

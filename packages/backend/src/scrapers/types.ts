@@ -3,12 +3,21 @@
  * All pool scrapers must implement this interface
  */
 
-import type { TimeSlot, LaneAvailability } from '@swim-check/shared';
+import type { TimeSlot, LaneAvailability, ResolvedSourceLink } from '@swim-check/shared';
+
+/**
+ * A URL used for scraping pool data (006-scraping-status-view)
+ */
+export interface SourceLink {
+  url: string;
+  label: string;
+}
 
 export interface PoolScraperMetadata {
   poolId: string;
   name: string;
   version: string;
+  sourceUrls?: SourceLink[]; // Optional static source URLs (006-scraping-status-view)
 }
 
 export interface PoolScraper extends PoolScraperMetadata {
@@ -25,6 +34,13 @@ export interface PoolScraper extends PoolScraperMetadata {
    * @returns true if the scraper is operational
    */
   isHealthy(): Promise<boolean>;
+
+  /**
+   * Get URLs discovered during the last successful scrape (006-scraping-status-view)
+   * These are dynamically resolved URLs (e.g., the actual PDF link)
+   * @returns Array of resolved source links, or undefined if not applicable
+   */
+  getResolvedSourceUrls?(): ResolvedSourceLink[] | undefined;
 }
 
 export interface ScraperConfig {
