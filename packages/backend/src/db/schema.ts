@@ -83,7 +83,8 @@ CREATE TABLE IF NOT EXISTS scrape_jobs (
     last_scrape_date TEXT,
     last_scrape_timestamp TEXT,
     last_scrape_status TEXT CHECK(last_scrape_status IN ('success', 'failure')),
-    last_error_message TEXT
+    last_error_message TEXT,
+    resolved_source_urls TEXT
 );
 
 -- Indexes for common queries
