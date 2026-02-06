@@ -108,18 +108,25 @@ HOST=0.0.0.0
 PORT=3000
 ```
 
-#### Frontend (Vite Preview)
+#### All-in-One (Recommended)
 
-For testing the production build:
+The backend automatically serves the frontend static files if `packages/frontend/dist/` exists. Just build and run:
 
 ```bash
-cd packages/frontend
-npx vite preview --host 0.0.0.0 --port 5173
+npm run build
+
+# Linux/macOS
+HOST=0.0.0.0 PORT=3000 node packages/backend/dist/index.js
+
+# Windows PowerShell
+$env:HOST="0.0.0.0"; $env:PORT="3000"; node packages/backend/dist/index.js
 ```
 
-#### Frontend (Static Hosting)
+Access the app at `http://<your-ip>:3000`
 
-For production, serve `packages/frontend/dist/` with any static file server (nginx, Apache, etc.) and configure the API proxy to point to your backend.
+#### Alternative: nginx Reverse Proxy
+
+For more control, use nginx to serve frontend static files and proxy API requests:
 
 Example nginx configuration:
 ```nginx
@@ -147,4 +154,4 @@ server {
 
 Once running on `0.0.0.0`, access the app using your machine's IP address:
 - Find your IP: `ipconfig` (Windows) or `ip addr` (Linux)
-- Access: `http://<your-ip>:5173` (frontend) or `http://<your-ip>:3000` (backend API)
+- Access: `http://<your-ip>:3000`

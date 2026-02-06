@@ -4,6 +4,8 @@
 
 import express from 'express';
 import cors from 'cors';
+import { existsSync } from 'fs';
+import { resolve } from 'path';
 import { config, validateConfig } from './config.js';
 import { initializeDatabase, getDatabase, saveDatabase } from './db/schema.js';
 import { errorHandler } from './api/routes.js';
@@ -135,6 +137,17 @@ async function main() {
 
   // Error handler
   app.use(errorHandler);
+
+  // Serve frontend static files in production
+  const frontendDist = resolve(import.meta.dirname, '..', '..', 'frontend', 'dist');
+  if (existsSync(frontendDist)) {
+    app.use(express.static(frontendDist));
+    // SPA fallback - serve index.html for non-API routes
+    app.get('*', (_req, res) => {
+      res.sendFile(resolve(frontendDist, 'index.html'));
+    });
+    console.log(`Serving frontend from ${frontendDist}`);
+  }
 
   // Start server
   app.listen(config.port, config.host, () => {
