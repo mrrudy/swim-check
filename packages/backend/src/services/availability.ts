@@ -6,6 +6,7 @@ import type { PoolAvailability, TimeSlot, LaneAvailability } from '@swim-check/s
 import { scraperRegistry } from '../scrapers/registry.js';
 import { availabilityCache } from './cache.js';
 import { getPoolById, getLanesByPoolId } from '../db/queries.js';
+import { getDatabase } from '../db/schema.js';
 
 export type DataFreshness = 'fresh' | 'cached' | 'stale' | 'unavailable';
 
@@ -14,8 +15,8 @@ interface CachedAvailability {
   scrapedAt: Date;
 }
 
-function getCacheKey(poolId: string, date: string): string {
-  return `availability:${poolId}:${date}`;
+function getCacheKey(poolId: string, date: string, startTime: string, endTime: string): string {
+  return `availability:${poolId}:${date}:${startTime}:${endTime}`;
 }
 
 export class AvailabilityService {
@@ -38,7 +39,7 @@ export class AvailabilityService {
     }
 
     const dateStr = this.formatDate(date);
-    const cacheKey = getCacheKey(poolId, dateStr);
+    const cacheKey = getCacheKey(poolId, dateStr, timeSlot.startTime, timeSlot.endTime);
 
     // Check cache unless force refresh
     if (!forceRefresh) {
@@ -125,10 +126,23 @@ export class AvailabilityService {
   }
 
   private getStaleCacheEntry(cacheKey: string): CachedAvailability | null {
-    // Directly query the database for potentially expired entries
-    // The cache service normally filters out expired entries, but we want stale data as fallback
-    // For simplicity, we return null here - in production you'd query the raw cache table
-    return null;
+    // Query the database for expired entries to use as stale fallback
+    const db = getDatabase();
+    const result = db.exec(
+      'SELECT value FROM cache_entries WHERE key = ?',
+      [cacheKey]
+    );
+
+    if (!result[0] || result[0].values.length === 0) {
+      return null;
+    }
+
+    try {
+      const row = result[0].values[0];
+      return JSON.parse(row[0] as string) as CachedAvailability;
+    } catch {
+      return null;
+    }
   }
 
   private buildResponse(

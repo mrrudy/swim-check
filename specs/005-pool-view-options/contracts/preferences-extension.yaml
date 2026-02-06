@@ -1,0 +1,150 @@
+# API Contract Extension: Pool View Display Options
+# Feature Branch: 005-pool-view-options
+# Date: 2026-02-02
+#
+# This contract extends the existing /api/v1/preferences endpoint.
+# No new endpoints are introduced - only schema extensions.
+
+openapi: 3.0.3
+info:
+  title: Swim-Check Preferences Extension
+  version: 1.1.0
+  description: |
+    Extends user preferences to include view display options:
+    - Compact view toggle (percentage bar vs lane grid)
+    - Forward slot count (multi-slot display)
+
+paths:
+  /api/v1/preferences:
+    get:
+      summary: Get user preferences (extended)
+      description: Returns all user preferences including new view options
+      operationId: getPreferences
+      responses:
+        '200':
+          description: User preferences retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPreferencesResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+    patch:
+      summary: Update user preferences (extended)
+      description: Updates user preferences including new view options
+      operationId: updatePreferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePreferencesRequest'
+      responses:
+        '200':
+          description: Preferences updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPreferencesResponse'
+        '400':
+          description: Invalid request (validation error)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+components:
+  schemas:
+    UpdatePreferencesRequest:
+      type: object
+      description: Request to update user preferences (all fields optional)
+      properties:
+        slotDurationMins:
+          type: integer
+          minimum: 30
+          maximum: 480
+          description: Default time slot duration in minutes (existing)
+          example: 60
+        compactViewEnabled:
+          type: boolean
+          description: Whether to display compact availability bar (NEW)
+          example: true
+        forwardSlotCount:
+          type: integer
+          minimum: 1
+          maximum: 10
+          description: Number of consecutive time slots to display (NEW)
+          example: 3
+
+    UserPreferencesResponse:
+      type: object
+      required:
+        - id
+        - slotDurationMins
+        - compactViewEnabled
+        - forwardSlotCount
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          description: Unique preference record ID
+          example: "pref_abc123"
+        slotDurationMins:
+          type: integer
+          minimum: 30
+          maximum: 480
+          description: Default time slot duration in minutes
+          example: 60
+        compactViewEnabled:
+          type: boolean
+          description: Whether to display compact availability bar
+          default: true
+          example: true
+        forwardSlotCount:
+          type: integer
+          minimum: 1
+          maximum: 10
+          description: Number of consecutive time slots to display
+          default: 1
+          example: 3
+        createdAt:
+          type: string
+          format: date-time
+          description: Record creation timestamp
+          example: "2026-02-02T10:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Record last update timestamp
+          example: "2026-02-02T10:30:00Z"
+
+    ApiError:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Error code
+          example: "VALIDATION_ERROR"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "forwardSlotCount must be between 1 and 10"
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional error details

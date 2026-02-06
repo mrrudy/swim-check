@@ -17,6 +17,8 @@ preferencesRouter.get('/', asyncHandler(async (_req: Request, res: Response) => 
   const response: UserPreferencesResponse = {
     id: prefs.id,
     slotDurationMins: prefs.slotDurationMins,
+    compactViewEnabled: prefs.compactViewEnabled,
+    forwardSlotCount: prefs.forwardSlotCount,
     createdAt: prefs.createdAt.toISOString(),
     updatedAt: prefs.updatedAt.toISOString(),
   };
@@ -26,7 +28,7 @@ preferencesRouter.get('/', asyncHandler(async (_req: Request, res: Response) => 
 
 // PATCH /preferences - Update user preferences
 preferencesRouter.patch('/', asyncHandler(async (req: Request, res: Response) => {
-  const { slotDurationMins } = req.body;
+  const { slotDurationMins, compactViewEnabled, forwardSlotCount } = req.body;
 
   // Validate slotDurationMins if provided
   if (slotDurationMins !== undefined) {
@@ -41,11 +43,33 @@ preferencesRouter.patch('/', asyncHandler(async (req: Request, res: Response) =>
     }
   }
 
-  const prefs = updatePreferences({ slotDurationMins });
+  // Validate compactViewEnabled if provided (005-pool-view-options)
+  if (compactViewEnabled !== undefined) {
+    if (typeof compactViewEnabled !== 'boolean') {
+      return sendError(res, 400, 'INVALID_COMPACT_VIEW', 'compactViewEnabled must be a boolean');
+    }
+  }
+
+  // Validate forwardSlotCount if provided (005-pool-view-options)
+  if (forwardSlotCount !== undefined) {
+    if (typeof forwardSlotCount !== 'number') {
+      return sendError(res, 400, 'INVALID_FORWARD_SLOT_COUNT', 'forwardSlotCount must be a number');
+    }
+    if (!Number.isInteger(forwardSlotCount)) {
+      return sendError(res, 400, 'INVALID_FORWARD_SLOT_COUNT', 'forwardSlotCount must be an integer');
+    }
+    if (forwardSlotCount < 1 || forwardSlotCount > 10) {
+      return sendError(res, 400, 'INVALID_FORWARD_SLOT_COUNT', 'forwardSlotCount must be between 1 and 10');
+    }
+  }
+
+  const prefs = updatePreferences({ slotDurationMins, compactViewEnabled, forwardSlotCount });
 
   const response: UserPreferencesResponse = {
     id: prefs.id,
     slotDurationMins: prefs.slotDurationMins,
+    compactViewEnabled: prefs.compactViewEnabled,
+    forwardSlotCount: prefs.forwardSlotCount,
     createdAt: prefs.createdAt.toISOString(),
     updatedAt: prefs.updatedAt.toISOString(),
   };

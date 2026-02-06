@@ -65,11 +65,15 @@ export interface ReorderFavoritesRequest {
 // Preferences endpoints
 export interface UpdatePreferencesRequest {
   slotDurationMins?: number;
+  compactViewEnabled?: boolean;    // 005-pool-view-options
+  forwardSlotCount?: number;       // 005-pool-view-options
 }
 
 export interface UserPreferencesResponse {
   id: string;
   slotDurationMins: number;
+  compactViewEnabled: boolean;     // 005-pool-view-options
+  forwardSlotCount: number;        // 005-pool-view-options
   createdAt: string;
   updatedAt: string;
 }

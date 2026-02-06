@@ -54,6 +54,8 @@ CREATE TABLE IF NOT EXISTS pool_scrapers (
 CREATE TABLE IF NOT EXISTS user_preferences (
     id TEXT PRIMARY KEY,
     slot_duration_mins INTEGER NOT NULL DEFAULT 60 CHECK (slot_duration_mins >= 30 AND slot_duration_mins <= 480),
+    compact_view_enabled INTEGER NOT NULL DEFAULT 1,
+    forward_slot_count INTEGER NOT NULL DEFAULT 1 CHECK (forward_slot_count >= 1 AND forward_slot_count <= 10),
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -103,7 +105,33 @@ CREATE TABLE IF NOT EXISTS scrape_jobs (
     last_error_message TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_scrape_jobs_date ON scrape_jobs(last_scrape_date);
+
+-- Add view preferences columns if they don't exist (005-pool-view-options)
+-- SQLite doesn't support ADD COLUMN IF NOT EXISTS, so we use a workaround
+-- Check if columns exist via PRAGMA, then add if missing (handled in code)
 `;
+
+/**
+ * Migration for view preferences columns (005-pool-view-options)
+ * Adds compact_view_enabled and forward_slot_count columns if they don't exist
+ */
+function runViewPreferencesMigration(database: SqlJsDatabase): void {
+  // Check if columns exist
+  const tableInfo = database.exec('PRAGMA table_info(user_preferences)');
+  if (!tableInfo[0]) return;
+
+  const columns = tableInfo[0].values.map((row) => row[1] as string);
+
+  // Add compact_view_enabled if missing
+  if (!columns.includes('compact_view_enabled')) {
+    database.run('ALTER TABLE user_preferences ADD COLUMN compact_view_enabled INTEGER NOT NULL DEFAULT 1');
+  }
+
+  // Add forward_slot_count if missing
+  if (!columns.includes('forward_slot_count')) {
+    database.run('ALTER TABLE user_preferences ADD COLUMN forward_slot_count INTEGER NOT NULL DEFAULT 1');
+  }
+}
 
 export async function initializeDatabase(path: string): Promise<SqlJsDatabase> {
   const SQL = await initSqlJs();
@@ -114,6 +142,8 @@ export async function initializeDatabase(path: string): Promise<SqlJsDatabase> {
     db = new SQL.Database(buffer);
     // Run migrations for existing databases
     db.run(MIGRATIONS);
+    // Run view preferences migration (005-pool-view-options)
+    runViewPreferencesMigration(db);
     saveDatabase();
   } else {
     db = new SQL.Database();

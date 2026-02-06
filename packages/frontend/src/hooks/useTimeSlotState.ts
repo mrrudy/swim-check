@@ -208,7 +208,7 @@ export function useTimeSlotState(
       ) {
         setSavedDuration(newDuration);
         // Save to server
-        api.updatePreferences(newDuration).catch((err) => {
+        api.updatePreferences({ slotDurationMins: newDuration }).catch((err) => {
           console.warn('Failed to save duration preference:', err);
         });
       }

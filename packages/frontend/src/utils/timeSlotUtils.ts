@@ -123,3 +123,56 @@ export function canExtendDuration(startTime: string, currentDuration: number): b
 export function canReduceDuration(currentDuration: number): boolean {
   return currentDuration > SLOT_CONSTANTS.MIN_DURATION;
 }
+
+// ==========================================
+// Forward Slots (005-pool-view-options)
+// ==========================================
+
+export interface ForwardSlot {
+  startTime: string;
+  endTime: string;
+}
+
+/**
+ * Generate forward slots from a starting time
+ * Respects day boundary at pool closing time (22:00)
+ *
+ * @param startTime - Starting time in HH:MM format
+ * @param duration - Slot duration in minutes
+ * @param count - Number of slots to generate (1-10)
+ * @returns Array of {startTime, endTime} objects
+ */
+export function generateForwardSlots(
+  startTime: string,
+  duration: number,
+  count: number
+): ForwardSlot[] {
+  const slots: ForwardSlot[] = [];
+  const clampedCount = Math.max(1, Math.min(10, count));
+
+  let currentStartTime = startTime;
+
+  for (let i = 0; i < clampedCount; i++) {
+    const endTime = calculateEndTime(currentStartTime, duration);
+
+    // Stop if we've hit pool closing time
+    if (currentStartTime >= SLOT_CONSTANTS.LAST_SLOT) {
+      break;
+    }
+
+    slots.push({
+      startTime: currentStartTime,
+      endTime: endTime,
+    });
+
+    // Next slot starts where this one ends
+    currentStartTime = endTime;
+
+    // Stop if the next slot would start at or after closing time
+    if (currentStartTime >= SLOT_CONSTANTS.LAST_SLOT) {
+      break;
+    }
+  }
+
+  return slots;
+}

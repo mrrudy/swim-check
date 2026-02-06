@@ -169,20 +169,30 @@ export function createLanesForPool(poolId: string, totalLanes: number): Lane[] {
 export interface PreferencesRow {
   id: string;
   slot_duration_mins: number;
+  compact_view_enabled: number; // SQLite stores booleans as 0/1
+  forward_slot_count: number;
   created_at: string;
   updated_at: string;
 }
 
-function rowToPreferences(row: PreferencesRow): UserPreferences {
+/** Extended UserPreferences with view options (005-pool-view-options) */
+export interface ExtendedUserPreferences extends UserPreferences {
+  compactViewEnabled: boolean;
+  forwardSlotCount: number;
+}
+
+function rowToPreferences(row: PreferencesRow): ExtendedUserPreferences {
   return {
     id: row.id,
     slotDurationMins: row.slot_duration_mins,
+    compactViewEnabled: row.compact_view_enabled === 1,
+    forwardSlotCount: row.forward_slot_count,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
   };
 }
 
-export function getOrCreatePreferences(): UserPreferences {
+export function getOrCreatePreferences(): ExtendedUserPreferences {
   const db = getDatabase();
   const result = db.exec('SELECT * FROM user_preferences LIMIT 1');
 
@@ -196,34 +206,66 @@ export function getOrCreatePreferences(): UserPreferences {
     return rowToPreferences(obj as unknown as PreferencesRow);
   }
 
-  // Create default preferences
+  // Create default preferences with view options defaults
   const id = uuidv4();
   const now = new Date().toISOString();
 
   db.run(
-    `INSERT INTO user_preferences (id, slot_duration_mins, created_at, updated_at)
-     VALUES (?, ?, ?, ?)`,
-    [id, 60, now, now]
+    `INSERT INTO user_preferences (id, slot_duration_mins, compact_view_enabled, forward_slot_count, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [id, 60, 1, 1, now, now]
   );
   saveDatabase();
 
   return {
     id,
     slotDurationMins: 60,
+    compactViewEnabled: true,
+    forwardSlotCount: 1,
     createdAt: new Date(now),
     updatedAt: new Date(now),
   };
 }
 
-export function updatePreferences(updates: Partial<Pick<UserPreferences, 'slotDurationMins'>>): UserPreferences {
+/** Update preferences including view options (005-pool-view-options) */
+export interface UpdatePreferencesInput {
+  slotDurationMins?: number;
+  compactViewEnabled?: boolean;
+  forwardSlotCount?: number;
+}
+
+export function updatePreferences(updates: UpdatePreferencesInput): ExtendedUserPreferences {
   const prefs = getOrCreatePreferences();
   const db = getDatabase();
   const now = new Date().toISOString();
 
+  const setClauses: string[] = [];
+  const params: (string | number)[] = [];
+
   if (updates.slotDurationMins !== undefined) {
+    setClauses.push('slot_duration_mins = ?');
+    params.push(updates.slotDurationMins);
+  }
+
+  if (updates.compactViewEnabled !== undefined) {
+    setClauses.push('compact_view_enabled = ?');
+    params.push(updates.compactViewEnabled ? 1 : 0);
+  }
+
+  if (updates.forwardSlotCount !== undefined) {
+    // Clamp to valid range (1-10)
+    const clampedCount = Math.max(1, Math.min(10, updates.forwardSlotCount));
+    setClauses.push('forward_slot_count = ?');
+    params.push(clampedCount);
+  }
+
+  if (setClauses.length > 0) {
+    setClauses.push('updated_at = ?');
+    params.push(now, prefs.id);
+
     db.run(
-      `UPDATE user_preferences SET slot_duration_mins = ?, updated_at = ? WHERE id = ?`,
-      [updates.slotDurationMins, now, prefs.id]
+      `UPDATE user_preferences SET ${setClauses.join(', ')} WHERE id = ?`,
+      params
     );
     saveDatabase();
   }

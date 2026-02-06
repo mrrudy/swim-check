@@ -97,10 +97,14 @@ class ApiClient {
     return this.fetch<UserPreferencesResponse>('/preferences');
   }
 
-  async updatePreferences(slotDurationMins?: number): Promise<UserPreferencesResponse> {
+  async updatePreferences(updates: {
+    slotDurationMins?: number;
+    compactViewEnabled?: boolean;
+    forwardSlotCount?: number;
+  }): Promise<UserPreferencesResponse> {
     return this.fetch<UserPreferencesResponse>('/preferences', {
       method: 'PATCH',
-      body: JSON.stringify({ slotDurationMins }),
+      body: JSON.stringify(updates),
     });
   }
 
