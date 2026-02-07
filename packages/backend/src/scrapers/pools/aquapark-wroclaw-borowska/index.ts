@@ -90,15 +90,15 @@ export class AquaparkWroclawScraper implements PoolScraper {
       const html = await response.text();
       const $ = cheerio.load(html);
 
-      // Look for PDF links on the page
-      const pdfLink = $('a[href$=".pdf"]').first().attr('href');
+      // Look for PDF links on the page (last link = most recent schedule)
+      const pdfLink = $('a[href$=".pdf"]').last().attr('href');
 
       if (!pdfLink) {
         // Try alternative selectors
         const anyPdfLink = $('a').filter((_, el) => {
           const href = $(el).attr('href') || '';
           return href.toLowerCase().includes('.pdf');
-        }).first().attr('href');
+        }).last().attr('href');
 
         if (anyPdfLink) {
           return this.resolveUrl(anyPdfLink);
