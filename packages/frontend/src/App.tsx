@@ -3,6 +3,8 @@ import { Home } from './pages/Home';
 import { Search } from './pages/Search';
 import { PoolDetail } from './pages/PoolDetail';
 import { ScrapingStatus } from './pages/ScrapingStatus';
+import { HamburgerMenu } from './components/HamburgerMenu';
+import { useMediaQuery } from './hooks/useMediaQuery';
 
 const styles = {
   app: {
@@ -38,25 +40,31 @@ const styles = {
 };
 
 export function App() {
+  const isMobile = useMediaQuery('(max-width: 799px)');
+
   return (
     <BrowserRouter>
-      <div style={styles.app}>
-        <header style={styles.header}>
+      <div style={styles.app} className="app-container">
+        <header style={styles.header} className="app-header">
           <Link to="/" style={{ textDecoration: 'none' }}>
-            <h1 style={styles.title}>Swim Check</h1>
+            <h1 style={styles.title} className="app-title">Swim Check</h1>
           </Link>
-          <p style={styles.subtitle}>Check lane availability at your favorite pools</p>
-          <nav style={styles.nav}>
-            <Link to="/" style={styles.navLink}>
-              Favorites
-            </Link>
-            <Link to="/search" style={styles.navLink}>
-              Search Pools
-            </Link>
-            <Link to="/scraping-status" style={styles.navLink}>
-              Scraping Status
-            </Link>
-          </nav>
+          <p style={styles.subtitle} className="app-subtitle">Check lane availability at your favorite pools</p>
+          {isMobile ? (
+            <HamburgerMenu />
+          ) : (
+            <nav style={styles.nav} className="nav-inline">
+              <Link to="/" style={styles.navLink}>
+                Favorites
+              </Link>
+              <Link to="/search" style={styles.navLink}>
+                Search Pools
+              </Link>
+              <Link to="/scraping-status" style={styles.navLink}>
+                Scraping Status
+              </Link>
+            </nav>
+          )}
         </header>
         <main>
           <Routes>

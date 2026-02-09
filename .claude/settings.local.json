@@ -50,7 +50,13 @@
       "Bash(cmd /c \"taskkill /PID 51392 /F\")",
       "Bash(cmd /c \"tasklist /FI \"\"PID eq 51392\"\"\")",
       "Bash(powershell.exe -File:*)",
-      "Bash(npm run lint:*)"
+      "Bash(npm run lint:*)",
+      "Bash(xargs:*)",
+      "Bash(find:*)",
+      "Bash(dir:*)",
+      "Bash(where:*)",
+      "Bash(powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"& ''.\\\\.specify\\\\scripts\\\\powershell\\\\create-new-feature.ps1'' -Json -Number 9 -ShortName ''mobile-ui-refinements'' ''Mobile UI refinements for small screens: hide slot navigation box, move refresh and cache info to bottom, show edge navigation zones with delay, keep date/time inputs in single row''\")",
+      "Bash(cmd /c:*)"
     ]
   }
 }

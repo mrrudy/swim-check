@@ -109,7 +109,7 @@ export function SlotNavigationButtons({
   showKeyboardHints = true,
 }: SlotNavigationButtonsProps) {
   return (
-    <div style={styles.container}>
+    <div style={styles.container} className="slot-nav-container">
       {/* Time navigation row */}
       <div style={styles.row}>
         <button
@@ -121,6 +121,7 @@ export function SlotNavigationButtons({
             ...(!canNavigatePrevious ? styles.buttonDisabled : {}),
           }}
           aria-label="Previous slot"
+          className="slot-nav-button"
         >
           ◀ Prev
         </button>
@@ -139,6 +140,7 @@ export function SlotNavigationButtons({
             ...(!canNavigateNext ? styles.buttonDisabled : {}),
           }}
           aria-label="Next slot"
+          className="slot-nav-button"
         >
           Next ▶
         </button>
@@ -155,6 +157,7 @@ export function SlotNavigationButtons({
             ...(!canReduce ? styles.buttonDisabled : {}),
           }}
           aria-label="Reduce duration by 30 minutes"
+          className="slot-nav-button"
         >
           ▲ -30m
         </button>
@@ -173,6 +176,7 @@ export function SlotNavigationButtons({
             ...(!canExtend ? styles.buttonDisabled : {}),
           }}
           aria-label="Extend duration by 30 minutes"
+          className="slot-nav-button"
         >
           +30m ▼
         </button>

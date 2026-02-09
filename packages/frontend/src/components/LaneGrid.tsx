@@ -68,7 +68,7 @@ export function LaneGrid({ lanes, loading = false }: LaneGridProps) {
       <div style={styles.summary}>
         {availableCount} of {totalCount} lane{totalCount !== 1 ? 's' : ''} available
       </div>
-      <div style={styles.grid}>
+      <div style={styles.grid} className="lane-grid-responsive">
         {lanes.map((lane) => (
           <div
             key={lane.laneId}

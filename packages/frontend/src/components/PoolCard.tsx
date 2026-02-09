@@ -47,7 +47,7 @@ const styles = {
 
 export function PoolCard({ pool, showDetails = true }: PoolCardProps) {
   const content = (
-    <div style={styles.card}>
+    <div style={styles.card} className="pool-card-responsive">
       <div style={styles.name}>{pool.name}</div>
       <div style={styles.location}>{pool.location}</div>
       {showDetails && (

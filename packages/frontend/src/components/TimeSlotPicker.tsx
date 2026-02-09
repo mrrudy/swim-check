@@ -153,7 +153,7 @@ export function TimeSlotPicker({
   );
 
   return (
-    <div style={styles.container}>
+    <div style={styles.container} className="time-slot-picker-responsive">
       <div style={styles.field}>
         <label style={styles.label}>Date</label>
         <input

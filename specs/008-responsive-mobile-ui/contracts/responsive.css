@@ -1,0 +1,124 @@
+/**
+ * CSS Contract: responsive.css
+ *
+ * This file documents the expected CSS rules for the responsive.css file.
+ * It serves as a contract for implementation.
+ *
+ * Breakpoint: 800px (below = mobile, at/above = desktop)
+ * Import location: packages/frontend/src/main.tsx
+ */
+
+/* ============================================================
+   EDGE-ZONE ANIMATION
+   ============================================================ */
+
+/*
+@keyframes edge-flash {
+  0%   { opacity: 0; }
+  30%  { opacity: 0.8; }
+  100% { opacity: 0; }
+}
+
+.edge-zone-flash {
+  animation: edge-flash 0.3s ease-out forwards;
+}
+*/
+
+/* ============================================================
+   MOBILE LAYOUT (< 800px)
+   ============================================================ */
+
+/*
+@media (max-width: 799px) {
+  // App container: reduce padding
+  .app-container {
+    padding: 8px 12px;
+  }
+
+  // Header: compact single row, max 48px height
+  .app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    max-height: 48px;
+    margin-bottom: 8px;
+  }
+
+  // Title: smaller font
+  .app-title {
+    font-size: 18px !important;
+  }
+
+  // Subtitle: hidden
+  .app-subtitle {
+    display: none;
+  }
+
+  // Desktop nav: hidden on mobile
+  .nav-inline {
+    display: none;
+  }
+
+  // Hamburger: visible on mobile
+  .nav-hamburger {
+    display: block;
+  }
+
+  // Slot navigation buttons: compact
+  .slot-nav-container {
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .slot-nav-button {
+    padding: 6px 10px;
+    font-size: 13px;
+    min-width: 64px;
+  }
+
+  // Lane grid: tighter columns on mobile
+  .lane-grid-responsive {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 8px;
+  }
+
+  // Pool cards: full width on mobile
+  .pool-card-responsive {
+    width: 100%;
+  }
+
+  // Time slot picker: stack vertically on mobile
+  .time-slot-picker-responsive {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+*/
+
+/* ============================================================
+   DESKTOP LAYOUT (>= 800px)
+   ============================================================ */
+
+/*
+// Hamburger: hidden on desktop
+.nav-hamburger {
+  display: none;
+}
+
+// Desktop nav: visible (default flex)
+.nav-inline {
+  display: flex;
+}
+*/
+
+/* ============================================================
+   NOTES
+   ============================================================ */
+
+/*
+- All rules use class selectors that are added alongside existing inline styles
+- !important is used sparingly only where inline styles must be overridden at breakpoint
+- The edge-flash animation is viewport-independent (works at all sizes)
+- No CSS custom properties needed; breakpoint is simple and singular
+*/

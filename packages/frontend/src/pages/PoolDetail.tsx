@@ -11,6 +11,7 @@ import { CompactAvailabilityBar } from '../components/CompactAvailabilityBar';
 import { MultiSlotView } from '../components/MultiSlotView';
 import { FavoriteButton } from '../components/FavoriteButton';
 import { SlotNavigationButtons } from '../components/SlotNavigationButtons';
+import { EdgeZoneOverlay } from '../components/EdgeZoneOverlay';
 import { useSlotNavigation } from '../hooks/useSlotNavigation';
 import { useTimeSlotState } from '../hooks/useTimeSlotState';
 import { useDebounceRefresh } from '../hooks/useDebounceRefresh';
@@ -341,7 +342,7 @@ export function PoolDetail() {
   const isLoading = loadingPool || isRefreshing;
 
   return (
-    <div style={styles.container}>
+    <div style={styles.container} className="pool-detail-content">
       <div style={styles.header}>
         <Link to="/" style={styles.backLink}>
           ← Back
@@ -374,6 +375,7 @@ export function PoolDetail() {
 
       {/* Slot Navigation - keyboard and button controls */}
       <div
+        className="slot-nav-wrapper"
         tabIndex={0}
         onKeyDown={navigation.handleKeyDown}
         onFocus={() => setHasFocus(true)}
@@ -398,7 +400,7 @@ export function PoolDetail() {
         />
       </div>
 
-      <div style={styles.actions}>
+      <div style={styles.actions} className="pool-detail-actions">
         <button
           onClick={handleRefresh}
           style={isLoading ? styles.refreshButtonDisabled : styles.refreshButton}
@@ -427,7 +429,7 @@ export function PoolDetail() {
 
       {/* Stale data indicator */}
       {availability?.dataFreshness === 'stale' && (
-        <div style={styles.staleIndicator}>
+        <div style={styles.staleIndicator} className="stale-indicator">
           <span>⚠</span>
           <span>Data may be outdated. Click Refresh for latest availability.</span>
         </div>
@@ -484,38 +486,50 @@ export function PoolDetail() {
         </div>
       </div>
 
-      {/* Lane availability display with loading overlay */}
-      <div style={styles.refreshingOverlay}>
-        {(isRefreshing || multiSlotData.isLoading) && (
-          <div style={styles.refreshingIndicator as React.CSSProperties}>
-            Updating...
-          </div>
-        )}
+      {/* Lane availability display with loading overlay and edge zones */}
+      <EdgeZoneOverlay
+        onNavigatePrevious={navigation.navigatePrevious}
+        onNavigateNext={navigation.navigateNext}
+        onExtend={navigation.extendDuration}
+        onReduce={navigation.reduceDuration}
+        canNavigatePrevious={navigation.canNavigatePrevious}
+        canNavigateNext={navigation.canNavigateNext}
+        canExtend={navigation.canExtend}
+        canReduce={navigation.canReduce}
+        dataLoaded={availability !== null && !isRefreshing}
+      >
+        <div style={styles.refreshingOverlay}>
+          {(isRefreshing || multiSlotData.isLoading) && (
+            <div style={styles.refreshingIndicator as React.CSSProperties}>
+              Updating...
+            </div>
+          )}
 
-        {/* Multi-slot view when forwardSlotCount > 1 (005-pool-view-options) */}
-        {viewPreferences.forwardSlotCount > 1 ? (
-          <MultiSlotView
-            slots={multiSlotData.slots}
-            compactView={viewPreferences.compactViewEnabled}
-            date={state.date}
-            testId="multi-slot-view"
-          />
-        ) : (
-          /* Single slot view (original behavior) */
-          availability && (
-            viewPreferences.compactViewEnabled ? (
-              <CompactAvailabilityBar
-                availableCount={availability.availableLaneCount}
-                totalCount={availability.totalLaneCount}
-                loading={isRefreshing}
-                testId="pool-availability-bar"
-              />
-            ) : (
-              <LaneGrid lanes={availability.lanes} loading={isRefreshing} />
+          {/* Multi-slot view when forwardSlotCount > 1 (005-pool-view-options) */}
+          {viewPreferences.forwardSlotCount > 1 ? (
+            <MultiSlotView
+              slots={multiSlotData.slots}
+              compactView={viewPreferences.compactViewEnabled}
+              date={state.date}
+              testId="multi-slot-view"
+            />
+          ) : (
+            /* Single slot view (original behavior) */
+            availability && (
+              viewPreferences.compactViewEnabled ? (
+                <CompactAvailabilityBar
+                  availableCount={availability.availableLaneCount}
+                  totalCount={availability.totalLaneCount}
+                  loading={isRefreshing}
+                  testId="pool-availability-bar"
+                />
+              ) : (
+                <LaneGrid lanes={availability.lanes} loading={isRefreshing} />
+              )
             )
-          )
-        )}
-      </div>
+          )}
+        </div>
+      </EdgeZoneOverlay>
     </div>
   );
 }

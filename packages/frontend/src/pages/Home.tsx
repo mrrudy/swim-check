@@ -17,6 +17,7 @@ import { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { CombinedSlotSection } from '../components/CombinedSlotSection';
 import { SlotNavigationButtons } from '../components/SlotNavigationButtons';
+import { EdgeZoneOverlay } from '../components/EdgeZoneOverlay';
 import { TimeSlotPicker } from '../components/TimeSlotPicker';
 import { KeyboardHints } from '../components/KeyboardHints';
 import { useTimeSlotState } from '../hooks/useTimeSlotState';
@@ -343,15 +344,26 @@ export function Home() {
         </div>
 
         {/* T018: Render CombinedSlotSection components for each slot */}
-        <div style={styles.slotsContainer}>
-          {combinedData.slots.map((slot) => (
-            <CombinedSlotSection
-              key={`${slot.startTime}-${slot.endTime}`}
-              slot={slot}
-              compactView={viewPreferences.compactViewEnabled}
-            />
-          ))}
-        </div>
+        <EdgeZoneOverlay
+          onNavigatePrevious={navigation.navigatePrevious}
+          onNavigateNext={navigation.navigateNext}
+          onExtend={navigation.extendDuration}
+          onReduce={navigation.reduceDuration}
+          canNavigatePrevious={navigation.canNavigatePrevious}
+          canNavigateNext={navigation.canNavigateNext}
+          canExtend={navigation.canExtend}
+          canReduce={navigation.canReduce}
+        >
+          <div style={styles.slotsContainer}>
+            {combinedData.slots.map((slot) => (
+              <CombinedSlotSection
+                key={`${slot.startTime}-${slot.endTime}`}
+                slot={slot}
+                compactView={viewPreferences.compactViewEnabled}
+              />
+            ))}
+          </div>
+        </EdgeZoneOverlay>
       </div>
 
       <div style={styles.section}>

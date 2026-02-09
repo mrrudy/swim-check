@@ -1,0 +1,115 @@
+/* Edge-zone animation (viewport-independent) */
+@keyframes edge-flash {
+  0% { opacity: 0; }
+  30% { opacity: 0.8; }
+  100% { opacity: 0; }
+}
+
+.edge-zone-flash {
+  animation: edge-flash 0.3s ease-out forwards;
+}
+
+/* Edge zone hint arrows (009-mobile-ui-refinements) */
+@keyframes hint-fade-in {
+  0% { opacity: 0; }
+  100% { opacity: 0.45; }
+}
+
+.edge-zone-hint {
+  opacity: 0.45;
+  pointer-events: none;
+  animation: hint-fade-in 0.5s ease-in;
+}
+
+/* Desktop defaults */
+.nav-hamburger {
+  display: none;
+}
+
+.nav-inline {
+  display: flex;
+}
+
+/* Mobile layout (< 800px) */
+@media (max-width: 799px) {
+  .app-container {
+    padding: 8px 12px !important;
+  }
+
+  .app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0 !important;
+    max-height: 48px;
+    margin-bottom: 8px !important;
+    border-bottom: none !important;
+  }
+
+  .app-title {
+    font-size: 18px !important;
+  }
+
+  .app-subtitle {
+    display: none;
+  }
+
+  .nav-inline {
+    display: none;
+  }
+
+  .nav-hamburger {
+    display: block;
+  }
+
+  .slot-nav-container,
+  .slot-nav-wrapper {
+    display: none;
+  }
+
+  .lane-grid-responsive {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .pool-card-responsive {
+    width: 100% !important;
+  }
+
+  .time-slot-picker-responsive {
+    flex-direction: row !important;
+    flex-wrap: wrap;
+    gap: 8px !important;
+    align-items: flex-end !important;
+  }
+
+  .time-slot-picker-responsive input[type="date"] {
+    min-width: clamp(100px, 28vw, 150px) !important;
+  }
+
+  .time-slot-picker-responsive select {
+    min-width: clamp(65px, 18vw, 100px) !important;
+  }
+
+  .combined-slot-section {
+    padding: 12px;
+  }
+
+  .pool-name-row {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .pool-detail-content {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .pool-detail-actions {
+    order: 10;
+  }
+
+  .stale-indicator {
+    order: 11;
+  }
+}

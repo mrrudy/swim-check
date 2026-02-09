@@ -164,6 +164,17 @@ describe('SlotNavigationButtons', () => {
   });
 
   // ==========================================
+  // Feature 009: Mobile UI Refinements - US1
+  // ==========================================
+
+  describe('US1 (009): hidden on mobile via CSS', () => {
+    it('should have slot-nav-container class for CSS targeting', () => {
+      const { container } = render(<SlotNavigationButtons {...defaultProps} />);
+      expect(container.querySelector('.slot-nav-container')).toBeInTheDocument();
+    });
+  });
+
+  // ==========================================
   // Display and formatting
   // ==========================================
 
