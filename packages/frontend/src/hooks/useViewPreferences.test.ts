@@ -32,6 +32,7 @@ describe('useViewPreferences', () => {
         slotDurationMins: 60,
         compactViewEnabled: true,
         forwardSlotCount: 1,
+        showNavEnabled: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
@@ -47,6 +48,7 @@ describe('useViewPreferences', () => {
         slotDurationMins: 60,
         compactViewEnabled: true,
         forwardSlotCount: 1,
+        showNavEnabled: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
@@ -64,6 +66,7 @@ describe('useViewPreferences', () => {
         slotDurationMins: 60,
         compactViewEnabled: false,
         forwardSlotCount: 3,
+        showNavEnabled: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
@@ -94,6 +97,7 @@ describe('useViewPreferences', () => {
           slotDurationMins: 60,
           compactViewEnabled: true,
           forwardSlotCount: 1,
+          showNavEnabled: true,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         });
@@ -112,6 +116,7 @@ describe('useViewPreferences', () => {
         slotDurationMins: 60,
         compactViewEnabled: true,
         forwardSlotCount: 1,
+        showNavEnabled: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
@@ -121,6 +126,7 @@ describe('useViewPreferences', () => {
         slotDurationMins: 60,
         compactViewEnabled: false,
         forwardSlotCount: 1,
+        showNavEnabled: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
@@ -146,6 +152,7 @@ describe('useViewPreferences', () => {
         slotDurationMins: 60,
         compactViewEnabled: true,
         forwardSlotCount: 1,
+        showNavEnabled: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
@@ -155,6 +162,7 @@ describe('useViewPreferences', () => {
         slotDurationMins: 60,
         compactViewEnabled: true,
         forwardSlotCount: 5,
+        showNavEnabled: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
@@ -180,6 +188,7 @@ describe('useViewPreferences', () => {
         slotDurationMins: 60,
         compactViewEnabled: true,
         forwardSlotCount: 1,
+        showNavEnabled: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
@@ -210,6 +219,7 @@ describe('useViewPreferences', () => {
           slotDurationMins: 60,
           compactViewEnabled: false,
           forwardSlotCount: 1,
+          showNavEnabled: true,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         });
@@ -228,6 +238,7 @@ describe('useViewPreferences', () => {
         slotDurationMins: 60,
         compactViewEnabled: true,
         forwardSlotCount: 1,
+        showNavEnabled: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
@@ -258,6 +269,7 @@ describe('useViewPreferences', () => {
           slotDurationMins: 60,
           compactViewEnabled: false,
           forwardSlotCount: 1,
+          showNavEnabled: true,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         });
@@ -282,6 +294,7 @@ describe('useViewPreferences', () => {
         slotDurationMins: 60,
         compactViewEnabled: true,
         forwardSlotCount: 1,
+        showNavEnabled: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
@@ -311,6 +324,7 @@ describe('useViewPreferences', () => {
         slotDurationMins: 60,
         compactViewEnabled: true,
         forwardSlotCount: 1,
+        showNavEnabled: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
@@ -320,6 +334,7 @@ describe('useViewPreferences', () => {
         slotDurationMins: 60,
         compactViewEnabled: true,
         forwardSlotCount: 1,
+        showNavEnabled: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
@@ -343,6 +358,7 @@ describe('useViewPreferences', () => {
         slotDurationMins: 60,
         compactViewEnabled: true,
         forwardSlotCount: 1,
+        showNavEnabled: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
@@ -352,6 +368,7 @@ describe('useViewPreferences', () => {
         slotDurationMins: 60,
         compactViewEnabled: true,
         forwardSlotCount: 10,
+        showNavEnabled: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });

@@ -102,6 +102,7 @@ class ApiClient {
     slotDurationMins?: number;
     compactViewEnabled?: boolean;
     forwardSlotCount?: number;
+    showNavEnabled?: boolean;
   }): Promise<UserPreferencesResponse> {
     return this.fetch<UserPreferencesResponse>('/preferences', {
       method: 'PATCH',

@@ -19,6 +19,7 @@ preferencesRouter.get('/', asyncHandler(async (_req: Request, res: Response) => 
     slotDurationMins: prefs.slotDurationMins,
     compactViewEnabled: prefs.compactViewEnabled,
     forwardSlotCount: prefs.forwardSlotCount,
+    showNavEnabled: prefs.showNavEnabled,
     createdAt: prefs.createdAt.toISOString(),
     updatedAt: prefs.updatedAt.toISOString(),
   };
@@ -28,7 +29,7 @@ preferencesRouter.get('/', asyncHandler(async (_req: Request, res: Response) => 
 
 // PATCH /preferences - Update user preferences
 preferencesRouter.patch('/', asyncHandler(async (req: Request, res: Response) => {
-  const { slotDurationMins, compactViewEnabled, forwardSlotCount } = req.body;
+  const { slotDurationMins, compactViewEnabled, forwardSlotCount, showNavEnabled } = req.body;
 
   // Validate slotDurationMins if provided
   if (slotDurationMins !== undefined) {
@@ -63,13 +64,21 @@ preferencesRouter.patch('/', asyncHandler(async (req: Request, res: Response) =>
     }
   }
 
-  const prefs = updatePreferences({ slotDurationMins, compactViewEnabled, forwardSlotCount });
+  // Validate showNavEnabled if provided (009-mobile-ui-refinements)
+  if (showNavEnabled !== undefined) {
+    if (typeof showNavEnabled !== 'boolean') {
+      return sendError(res, 400, 'INVALID_SHOW_NAV', 'showNavEnabled must be a boolean');
+    }
+  }
+
+  const prefs = updatePreferences({ slotDurationMins, compactViewEnabled, forwardSlotCount, showNavEnabled });
 
   const response: UserPreferencesResponse = {
     id: prefs.id,
     slotDurationMins: prefs.slotDurationMins,
     compactViewEnabled: prefs.compactViewEnabled,
     forwardSlotCount: prefs.forwardSlotCount,
+    showNavEnabled: prefs.showNavEnabled,
     createdAt: prefs.createdAt.toISOString(),
     updatedAt: prefs.updatedAt.toISOString(),
   };

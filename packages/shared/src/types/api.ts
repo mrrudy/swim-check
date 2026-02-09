@@ -74,6 +74,7 @@ export interface UserPreferencesResponse {
   slotDurationMins: number;
   compactViewEnabled: boolean;     // 005-pool-view-options
   forwardSlotCount: number;        // 005-pool-view-options
+  showNavEnabled: boolean;         // 009-mobile-ui-refinements
   createdAt: string;
   updatedAt: string;
 }

@@ -171,6 +171,7 @@ export interface PreferencesRow {
   slot_duration_mins: number;
   compact_view_enabled: number; // SQLite stores booleans as 0/1
   forward_slot_count: number;
+  show_nav_enabled: number; // SQLite stores booleans as 0/1
   created_at: string;
   updated_at: string;
 }
@@ -179,6 +180,7 @@ export interface PreferencesRow {
 export interface ExtendedUserPreferences extends UserPreferences {
   compactViewEnabled: boolean;
   forwardSlotCount: number;
+  showNavEnabled: boolean;
 }
 
 function rowToPreferences(row: PreferencesRow): ExtendedUserPreferences {
@@ -187,6 +189,7 @@ function rowToPreferences(row: PreferencesRow): ExtendedUserPreferences {
     slotDurationMins: row.slot_duration_mins,
     compactViewEnabled: row.compact_view_enabled === 1,
     forwardSlotCount: row.forward_slot_count,
+    showNavEnabled: row.show_nav_enabled === 1,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
   };
@@ -211,9 +214,9 @@ export function getOrCreatePreferences(): ExtendedUserPreferences {
   const now = new Date().toISOString();
 
   db.run(
-    `INSERT INTO user_preferences (id, slot_duration_mins, compact_view_enabled, forward_slot_count, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [id, 60, 1, 1, now, now]
+    `INSERT INTO user_preferences (id, slot_duration_mins, compact_view_enabled, forward_slot_count, show_nav_enabled, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [id, 60, 1, 1, 1, now, now]
   );
   saveDatabase();
 
@@ -222,6 +225,7 @@ export function getOrCreatePreferences(): ExtendedUserPreferences {
     slotDurationMins: 60,
     compactViewEnabled: true,
     forwardSlotCount: 1,
+    showNavEnabled: true,
     createdAt: new Date(now),
     updatedAt: new Date(now),
   };
@@ -232,6 +236,7 @@ export interface UpdatePreferencesInput {
   slotDurationMins?: number;
   compactViewEnabled?: boolean;
   forwardSlotCount?: number;
+  showNavEnabled?: boolean;
 }
 
 export function updatePreferences(updates: UpdatePreferencesInput): ExtendedUserPreferences {
@@ -257,6 +262,11 @@ export function updatePreferences(updates: UpdatePreferencesInput): ExtendedUser
     const clampedCount = Math.max(1, Math.min(10, updates.forwardSlotCount));
     setClauses.push('forward_slot_count = ?');
     params.push(clampedCount);
+  }
+
+  if (updates.showNavEnabled !== undefined) {
+    setClauses.push('show_nav_enabled = ?');
+    params.push(updates.showNavEnabled ? 1 : 0);
   }
 
   if (setClauses.length > 0) {

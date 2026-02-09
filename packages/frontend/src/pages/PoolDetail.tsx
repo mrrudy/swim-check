@@ -10,8 +10,8 @@ import { LaneGrid } from '../components/LaneGrid';
 import { CompactAvailabilityBar } from '../components/CompactAvailabilityBar';
 import { MultiSlotView } from '../components/MultiSlotView';
 import { FavoriteButton } from '../components/FavoriteButton';
-import { SlotNavigationButtons } from '../components/SlotNavigationButtons';
-import { EdgeZoneOverlay } from '../components/EdgeZoneOverlay';
+import { ViewOptionsBar } from '../components/ViewOptionsBar';
+import { NavigableSlotDisplay } from '../components/NavigableSlotDisplay';
 import { useSlotNavigation } from '../hooks/useSlotNavigation';
 import { useTimeSlotState } from '../hooks/useTimeSlotState';
 import { useDebounceRefresh } from '../hooks/useDebounceRefresh';
@@ -102,14 +102,7 @@ const styles = {
     textAlign: 'center',
     color: '#666',
   } as React.CSSProperties,
-  navigationContainer: {
-    outline: 'none',
-  } as React.CSSProperties,
-  navigationContainerFocused: {
-    outline: '2px solid #0066cc',
-    outlineOffset: '2px',
-    borderRadius: '8px',
-  } as React.CSSProperties,
+  // Focus styling now handled by NavigableSlotDisplay
   staleIndicator: {
     display: 'flex',
     alignItems: 'center',
@@ -137,57 +130,6 @@ const styles = {
     fontSize: '14px',
     zIndex: 10,
   } as React.CSSProperties,
-  // View options styles (005-pool-view-options)
-  viewOptionsContainer: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '16px',
-    marginBottom: '16px',
-    padding: '12px',
-    backgroundColor: '#f8f9fa',
-    borderRadius: '8px',
-  } as React.CSSProperties,
-  viewToggle: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  } as React.CSSProperties,
-  viewToggleButton: {
-    padding: '6px 12px',
-    fontSize: '13px',
-    border: '1px solid #ddd',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-  } as React.CSSProperties,
-  viewToggleButtonActive: {
-    backgroundColor: '#0066cc',
-    color: '#fff',
-    borderColor: '#0066cc',
-  } as React.CSSProperties,
-  viewToggleButtonInactive: {
-    backgroundColor: '#fff',
-    color: '#333',
-  } as React.CSSProperties,
-  viewToggleLabel: {
-    fontSize: '13px',
-    color: '#666',
-  } as React.CSSProperties,
-  // Forward slot count selector (005-pool-view-options)
-  forwardSlotSelector: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    marginLeft: 'auto',
-  } as React.CSSProperties,
-  forwardSlotSelect: {
-    padding: '4px 8px',
-    fontSize: '13px',
-    border: '1px solid #ddd',
-    borderRadius: '4px',
-    backgroundColor: '#fff',
-    cursor: 'pointer',
-  } as React.CSSProperties,
 };
 
 const freshnessColors: Record<DataFreshness, string> = {
@@ -211,7 +153,7 @@ export function PoolDetail() {
   const [loadingPool, setLoadingPool] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
-  const [hasFocus, setHasFocus] = useState(false);
+  // hasFocus state now managed by NavigableSlotDisplay
 
   // View preferences (005-pool-view-options)
   const viewPreferences = useViewPreferences();
@@ -373,33 +315,49 @@ export function PoolDetail() {
         disabled={isLoading}
       />
 
-      {/* Slot Navigation - keyboard and button controls */}
-      <div
-        className="slot-nav-wrapper"
-        tabIndex={0}
-        onKeyDown={navigation.handleKeyDown}
-        onFocus={() => setHasFocus(true)}
-        onBlur={() => setHasFocus(false)}
-        style={{
-          ...styles.navigationContainer,
-          ...(hasFocus ? styles.navigationContainerFocused : {}),
-        }}
+      {/* Slot navigation + edge zone overlay (shared component) */}
+      <NavigableSlotDisplay
+        navigation={navigation}
+        dataLoaded={availability !== null && !isRefreshing}
+        showNav={viewPreferences.showNavEnabled}
       >
-        <SlotNavigationButtons
-          startTime={navigation.startTime}
-          endTime={navigation.endTime}
-          duration={navigation.duration}
-          canNavigatePrevious={navigation.canNavigatePrevious}
-          canNavigateNext={navigation.canNavigateNext}
-          canExtend={navigation.canExtend}
-          canReduce={navigation.canReduce}
-          onNavigatePrevious={navigation.navigatePrevious}
-          onNavigateNext={navigation.navigateNext}
-          onExtend={navigation.extendDuration}
-          onReduce={navigation.reduceDuration}
-        />
-      </div>
+        <div style={styles.refreshingOverlay}>
+          {(isRefreshing || multiSlotData.isLoading) && (
+            <div style={styles.refreshingIndicator as React.CSSProperties}>
+              Updating...
+            </div>
+          )}
 
+          {/* Multi-slot view when forwardSlotCount > 1 */}
+          {viewPreferences.forwardSlotCount > 1 ? (
+            <MultiSlotView
+              slots={multiSlotData.slots}
+              compactView={viewPreferences.compactViewEnabled}
+              date={state.date}
+              testId="multi-slot-view"
+            />
+          ) : (
+            /* Single slot view (original behavior) */
+            availability && (
+              viewPreferences.compactViewEnabled ? (
+                <CompactAvailabilityBar
+                  availableCount={availability.availableLaneCount}
+                  totalCount={availability.totalLaneCount}
+                  loading={isRefreshing}
+                  testId="pool-availability-bar"
+                />
+              ) : (
+                <LaneGrid lanes={availability.lanes} loading={isRefreshing} />
+              )
+            )
+          )}
+        </div>
+      </NavigableSlotDisplay>
+
+      {/* View Options */}
+      <ViewOptionsBar viewPreferences={viewPreferences} />
+
+      {/* Refresh and status */}
       <div style={styles.actions} className="pool-detail-actions">
         <button
           onClick={handleRefresh}
@@ -436,100 +394,6 @@ export function PoolDetail() {
       )}
 
       {error && <div style={styles.error}>{error}</div>}
-
-      {/* View Options Toggle (005-pool-view-options) */}
-      <div style={styles.viewOptionsContainer}>
-        <div style={styles.viewToggle}>
-          <span style={styles.viewToggleLabel}>View:</span>
-          <button
-            style={{
-              ...styles.viewToggleButton,
-              ...(viewPreferences.compactViewEnabled
-                ? styles.viewToggleButtonActive
-                : styles.viewToggleButtonInactive),
-            }}
-            onClick={() => viewPreferences.setCompactViewEnabled(true)}
-          >
-            Compact
-          </button>
-          <button
-            style={{
-              ...styles.viewToggleButton,
-              ...(!viewPreferences.compactViewEnabled
-                ? styles.viewToggleButtonActive
-                : styles.viewToggleButtonInactive),
-            }}
-            onClick={() => viewPreferences.setCompactViewEnabled(false)}
-          >
-            Detailed
-          </button>
-        </div>
-        {/* Forward slot count selector (005-pool-view-options) */}
-        <div style={styles.forwardSlotSelector}>
-          <span style={styles.viewToggleLabel}>Slots ahead:</span>
-          <select
-            style={styles.forwardSlotSelect}
-            value={viewPreferences.forwardSlotCount}
-            onChange={(e) => viewPreferences.setForwardSlotCount(parseInt(e.target.value, 10))}
-            disabled={viewPreferences.isLoading || viewPreferences.isSaving}
-          >
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-          {/* Saving indicator (T025) */}
-          {viewPreferences.isSaving && (
-            <span style={{ fontSize: '12px', color: '#666' }}>Saving...</span>
-          )}
-        </div>
-      </div>
-
-      {/* Lane availability display with loading overlay and edge zones */}
-      <EdgeZoneOverlay
-        onNavigatePrevious={navigation.navigatePrevious}
-        onNavigateNext={navigation.navigateNext}
-        onExtend={navigation.extendDuration}
-        onReduce={navigation.reduceDuration}
-        canNavigatePrevious={navigation.canNavigatePrevious}
-        canNavigateNext={navigation.canNavigateNext}
-        canExtend={navigation.canExtend}
-        canReduce={navigation.canReduce}
-        dataLoaded={availability !== null && !isRefreshing}
-      >
-        <div style={styles.refreshingOverlay}>
-          {(isRefreshing || multiSlotData.isLoading) && (
-            <div style={styles.refreshingIndicator as React.CSSProperties}>
-              Updating...
-            </div>
-          )}
-
-          {/* Multi-slot view when forwardSlotCount > 1 (005-pool-view-options) */}
-          {viewPreferences.forwardSlotCount > 1 ? (
-            <MultiSlotView
-              slots={multiSlotData.slots}
-              compactView={viewPreferences.compactViewEnabled}
-              date={state.date}
-              testId="multi-slot-view"
-            />
-          ) : (
-            /* Single slot view (original behavior) */
-            availability && (
-              viewPreferences.compactViewEnabled ? (
-                <CompactAvailabilityBar
-                  availableCount={availability.availableLaneCount}
-                  totalCount={availability.totalLaneCount}
-                  loading={isRefreshing}
-                  testId="pool-availability-bar"
-                />
-              ) : (
-                <LaneGrid lanes={availability.lanes} loading={isRefreshing} />
-              )
-            )
-          )}
-        </div>
-      </EdgeZoneOverlay>
     </div>
   );
 }

@@ -104,12 +104,4 @@
     display: flex;
     flex-direction: column;
   }
-
-  .pool-detail-actions {
-    order: 10;
-  }
-
-  .stale-indicator {
-    order: 11;
-  }
 }

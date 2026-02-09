@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS user_preferences (
     slot_duration_mins INTEGER NOT NULL DEFAULT 60 CHECK (slot_duration_mins >= 30 AND slot_duration_mins <= 480),
     compact_view_enabled INTEGER NOT NULL DEFAULT 1,
     forward_slot_count INTEGER NOT NULL DEFAULT 1 CHECK (forward_slot_count >= 1 AND forward_slot_count <= 10),
+    show_nav_enabled INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -131,6 +132,11 @@ function runViewPreferencesMigration(database: SqlJsDatabase): void {
   // Add forward_slot_count if missing
   if (!columns.includes('forward_slot_count')) {
     database.run('ALTER TABLE user_preferences ADD COLUMN forward_slot_count INTEGER NOT NULL DEFAULT 1');
+  }
+
+  // Add show_nav_enabled if missing (009-mobile-ui-refinements)
+  if (!columns.includes('show_nav_enabled')) {
+    database.run('ALTER TABLE user_preferences ADD COLUMN show_nav_enabled INTEGER NOT NULL DEFAULT 1');
   }
 }
 

@@ -14,6 +14,7 @@ import { api } from '../services/api';
 const DEFAULTS = {
   compactViewEnabled: true,
   forwardSlotCount: 1,
+  showNavEnabled: true,
 };
 
 /** Debounce delay for saving preferences (T032) */
@@ -23,6 +24,7 @@ export interface UseViewPreferencesReturn {
   /** Current preferences state */
   compactViewEnabled: boolean;
   forwardSlotCount: number;
+  showNavEnabled: boolean;
 
   /** Loading states */
   isLoading: boolean;
@@ -34,6 +36,7 @@ export interface UseViewPreferencesReturn {
   /** Actions */
   setCompactViewEnabled: (enabled: boolean) => void;
   setForwardSlotCount: (count: number) => void;
+  setShowNavEnabled: (enabled: boolean) => void;
 }
 
 /**
@@ -43,6 +46,7 @@ export interface UseViewPreferencesReturn {
 export function useViewPreferences(): UseViewPreferencesReturn {
   const [compactViewEnabled, setCompactViewEnabledState] = useState(DEFAULTS.compactViewEnabled);
   const [forwardSlotCount, setForwardSlotCountState] = useState(DEFAULTS.forwardSlotCount);
+  const [showNavEnabled, setShowNavEnabledState] = useState(DEFAULTS.showNavEnabled);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +54,7 @@ export function useViewPreferences(): UseViewPreferencesReturn {
   // T032: Debounce timers for rapid toggle
   const saveCompactTimerRef = useRef<number | null>(null);
   const saveSlotCountTimerRef = useRef<number | null>(null);
+  const saveShowNavTimerRef = useRef<number | null>(null);
 
   // Load preferences from API on mount
   useEffect(() => {
@@ -63,6 +68,7 @@ export function useViewPreferences(): UseViewPreferencesReturn {
         if (mounted) {
           setCompactViewEnabledState(prefs.compactViewEnabled);
           setForwardSlotCountState(prefs.forwardSlotCount);
+          setShowNavEnabledState(prefs.showNavEnabled);
         }
       } catch (err) {
         if (mounted) {
@@ -135,21 +141,46 @@ export function useViewPreferences(): UseViewPreferencesReturn {
     }, SAVE_DEBOUNCE_MS);
   }, []);
 
+  // Save showNavEnabled with optimistic update and debouncing (009-mobile-ui-refinements)
+  const setShowNavEnabled = useCallback((enabled: boolean) => {
+    setShowNavEnabledState(enabled);
+    setError(null);
+
+    if (saveShowNavTimerRef.current) {
+      clearTimeout(saveShowNavTimerRef.current);
+    }
+
+    setIsSaving(true);
+
+    saveShowNavTimerRef.current = window.setTimeout(() => {
+      api.updatePreferences({ showNavEnabled: enabled })
+        .catch((err) => {
+          setError((err as Error).message);
+        })
+        .finally(() => {
+          setIsSaving(false);
+        });
+    }, SAVE_DEBOUNCE_MS);
+  }, []);
+
   // Cleanup timers on unmount
   useEffect(() => {
     return () => {
       if (saveCompactTimerRef.current) clearTimeout(saveCompactTimerRef.current);
       if (saveSlotCountTimerRef.current) clearTimeout(saveSlotCountTimerRef.current);
+      if (saveShowNavTimerRef.current) clearTimeout(saveShowNavTimerRef.current);
     };
   }, []);
 
   return {
     compactViewEnabled,
     forwardSlotCount,
+    showNavEnabled,
     isLoading,
     isSaving,
     error,
     setCompactViewEnabled,
     setForwardSlotCount,
+    setShowNavEnabled,
   };
 }
