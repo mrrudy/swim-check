@@ -20,7 +20,7 @@ describe('useSlotNavigation', () => {
   // ==========================================
 
   describe('US1: navigation', () => {
-    it('should call onNavigate with next slot on navigateNext', () => {
+    it('should call onNavigate jumping by duration on navigateNext (60min duration → +2 slots)', () => {
       const onNavigate = vi.fn();
       const { result } = renderHook(() =>
         useSlotNavigation(createDefaultProps({ onNavigate }))
@@ -28,10 +28,11 @@ describe('useSlotNavigation', () => {
 
       act(() => result.current.navigateNext());
 
-      expect(onNavigate).toHaveBeenCalledWith('10:30', '11:30', 60);
+      // duration=60, forwardSlotCount=1 → step=2 indices → 10:00 + 60min = 11:00
+      expect(onNavigate).toHaveBeenCalledWith('11:00', '12:00', 60);
     });
 
-    it('should call onNavigate with previous slot on navigatePrevious', () => {
+    it('should call onNavigate jumping by duration on navigatePrevious (60min duration → -2 slots)', () => {
       const onNavigate = vi.fn();
       const { result } = renderHook(() =>
         useSlotNavigation(createDefaultProps({ onNavigate }))
@@ -39,7 +40,8 @@ describe('useSlotNavigation', () => {
 
       act(() => result.current.navigatePrevious());
 
-      expect(onNavigate).toHaveBeenCalledWith('09:30', '10:30', 60);
+      // duration=60, forwardSlotCount=1 → step=2 indices → 10:00 - 60min = 09:00
+      expect(onNavigate).toHaveBeenCalledWith('09:00', '10:00', 60);
     });
 
     it('should not allow navigating past last slot (22:00)', () => {
@@ -64,6 +66,7 @@ describe('useSlotNavigation', () => {
         )
       );
 
+      // duration=60 → step=2 indices. 05:00 (index 0) - 2 = -2 < 0
       expect(result.current.canNavigatePrevious).toBe(false);
     });
 
@@ -80,7 +83,7 @@ describe('useSlotNavigation', () => {
         } as unknown as React.KeyboardEvent);
       });
 
-      expect(onNavigate).toHaveBeenCalledWith('10:30', '11:30', 60);
+      expect(onNavigate).toHaveBeenCalledWith('11:00', '12:00', 60);
     });
 
     it('should respond to ArrowLeft key', () => {
@@ -96,7 +99,7 @@ describe('useSlotNavigation', () => {
         } as unknown as React.KeyboardEvent);
       });
 
-      expect(onNavigate).toHaveBeenCalledWith('09:30', '10:30', 60);
+      expect(onNavigate).toHaveBeenCalledWith('09:00', '10:00', 60);
     });
 
     it('should compute endTime based on startTime and duration', () => {
@@ -223,6 +226,7 @@ describe('useSlotNavigation', () => {
 
   describe('edge cases', () => {
     it('should handle boundary navigation at end of day', () => {
+      // duration=30 → step=1 index. 21:30 is index 33, 33+1=34 = LAST_SLOT_INDEX → allowed
       const { result: result1 } = renderHook(() =>
         useSlotNavigation(
           createDefaultProps({
@@ -232,10 +236,9 @@ describe('useSlotNavigation', () => {
         )
       );
 
-      // Can navigate next at 21:30 with 30min duration (would go to 22:00 start)
       expect(result1.current.canNavigateNext).toBe(true);
 
-      // At 22:00, cannot navigate further
+      // At 22:00 (index 34), 34+1=35 > LAST_SLOT_INDEX → cannot navigate further
       const { result: result2 } = renderHook(() =>
         useSlotNavigation(
           createDefaultProps({
@@ -341,6 +344,87 @@ describe('useSlotNavigation', () => {
       act(() => result.current.reduceDuration());
 
       expect(onNavigate).not.toHaveBeenCalled();
+    });
+  });
+
+  // ==========================================
+  // Forward slot count navigation
+  // ==========================================
+
+  describe('forwardSlotCount navigation', () => {
+    it('should jump by duration * forwardSlotCount on navigateNext', () => {
+      const onNavigate = vi.fn();
+      const { result } = renderHook(() =>
+        useSlotNavigation(createDefaultProps({
+          startTime: '08:30',
+          duration: 60,
+          forwardSlotCount: 3,
+          onNavigate,
+        }))
+      );
+
+      act(() => result.current.navigateNext());
+
+      // step = (60/30) * 3 = 6 indices = 3 hours → 08:30 + 3h = 11:30
+      expect(onNavigate).toHaveBeenCalledWith('11:30', '12:30', 60);
+    });
+
+    it('should jump by duration * forwardSlotCount on navigatePrevious', () => {
+      const onNavigate = vi.fn();
+      const { result } = renderHook(() =>
+        useSlotNavigation(createDefaultProps({
+          startTime: '11:30',
+          duration: 60,
+          forwardSlotCount: 3,
+          onNavigate,
+        }))
+      );
+
+      act(() => result.current.navigatePrevious());
+
+      // step = 6 indices → 11:30 - 3h = 08:30
+      expect(onNavigate).toHaveBeenCalledWith('08:30', '09:30', 60);
+    });
+
+    it('should disable navigation when step would exceed boundaries', () => {
+      const { result } = renderHook(() =>
+        useSlotNavigation(createDefaultProps({
+          startTime: '08:00',
+          duration: 60,
+          forwardSlotCount: 3,
+        }))
+      );
+
+      // step = 6 indices. 08:00 is index 6. 6 - 6 = 0 = FIRST_SLOT_INDEX → allowed
+      expect(result.current.canNavigatePrevious).toBe(true);
+
+      // Now at 07:30 (index 5), step 6 → 5 - 6 = -1 < 0 → not allowed
+      const { result: result2 } = renderHook(() =>
+        useSlotNavigation(createDefaultProps({
+          startTime: '07:30',
+          duration: 60,
+          forwardSlotCount: 3,
+        }))
+      );
+
+      expect(result2.current.canNavigatePrevious).toBe(false);
+    });
+
+    it('should work with 30min duration and forwardSlotCount=1 (single slot jump)', () => {
+      const onNavigate = vi.fn();
+      const { result } = renderHook(() =>
+        useSlotNavigation(createDefaultProps({
+          startTime: '10:00',
+          duration: 30,
+          forwardSlotCount: 1,
+          onNavigate,
+        }))
+      );
+
+      act(() => result.current.navigateNext());
+
+      // step = (30/30) * 1 = 1 index = 30min → 10:00 + 30min = 10:30
+      expect(onNavigate).toHaveBeenCalledWith('10:30', '11:00', 30);
     });
   });
 

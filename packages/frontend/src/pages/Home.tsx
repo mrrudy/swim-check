@@ -112,6 +112,7 @@ export function Home() {
   const navigation = useSlotNavigation({
     startTime: state.startTime,
     duration: state.duration,
+    forwardSlotCount: viewPreferences.forwardSlotCount,
     onNavigate: handleNavigation,
   });
 

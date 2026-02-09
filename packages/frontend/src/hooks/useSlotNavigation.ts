@@ -18,6 +18,9 @@ export interface UseSlotNavigationProps {
   /** Current duration in minutes (controlled from parent) */
   duration: number;
 
+  /** Number of forward slots shown (navigation jumps by duration * forwardSlotCount) */
+  forwardSlotCount?: number;
+
   /** Maximum end time (pool closing or booking constraint) */
   maxEndTime?: string;
 
@@ -75,9 +78,14 @@ function timeToMinutes(time: string): number {
 export function useSlotNavigation({
   startTime,
   duration,
+  forwardSlotCount = 1,
   maxEndTime = SLOT_CONSTANTS.LAST_SLOT,
   onNavigate,
 }: UseSlotNavigationProps): UseSlotNavigationReturn {
+  // Number of 30-min slot indices to jump per navigation step
+  // = (duration / 30) * forwardSlotCount
+  const navigationStep = Math.max(1, (duration / SLOT_CONSTANTS.DURATION_STEP) * forwardSlotCount);
+
   // Computed values (all derived from props)
   const currentSlotIndex = useMemo(
     () => getSlotIndex(startTime),
@@ -90,8 +98,8 @@ export function useSlotNavigation({
   );
 
   // Navigation boundaries (computed from props)
-  const canNavigatePrevious = currentSlotIndex > SLOT_CONSTANTS.FIRST_SLOT_INDEX;
-  const canNavigateNext = currentSlotIndex < SLOT_CONSTANTS.LAST_SLOT_INDEX;
+  const canNavigatePrevious = currentSlotIndex - navigationStep >= SLOT_CONSTANTS.FIRST_SLOT_INDEX;
+  const canNavigateNext = currentSlotIndex + navigationStep <= SLOT_CONSTANTS.LAST_SLOT_INDEX;
 
   // Duration boundaries (computed from props)
   const canExtend = useMemo(() => {
@@ -109,20 +117,20 @@ export function useSlotNavigation({
   const navigatePrevious = useCallback(() => {
     if (!canNavigatePrevious) return;
 
-    const newIndex = currentSlotIndex - 1;
+    const newIndex = currentSlotIndex - navigationStep;
     const newStartTime = getTimeFromIndex(newIndex);
     const newEndTime = calculateEndTime(newStartTime, duration);
     onNavigate(newStartTime, newEndTime, duration);
-  }, [canNavigatePrevious, currentSlotIndex, duration, onNavigate]);
+  }, [canNavigatePrevious, currentSlotIndex, navigationStep, duration, onNavigate]);
 
   const navigateNext = useCallback(() => {
     if (!canNavigateNext) return;
 
-    const newIndex = currentSlotIndex + 1;
+    const newIndex = currentSlotIndex + navigationStep;
     const newStartTime = getTimeFromIndex(newIndex);
     const newEndTime = calculateEndTime(newStartTime, duration);
     onNavigate(newStartTime, newEndTime, duration);
-  }, [canNavigateNext, currentSlotIndex, duration, onNavigate]);
+  }, [canNavigateNext, currentSlotIndex, navigationStep, duration, onNavigate]);
 
   const extendDuration = useCallback(() => {
     if (!canExtend) return;
