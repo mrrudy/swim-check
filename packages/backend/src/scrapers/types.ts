@@ -18,6 +18,7 @@ export interface PoolScraperMetadata {
   name: string;
   version: string;
   sourceUrls?: SourceLink[]; // Optional static source URLs (006-scraping-status-view)
+  scrapeIntervalHours?: number; // Optional per-pool scrape interval in hours (010-teatralna-pool-scraper)
 }
 
 export interface PoolScraper extends PoolScraperMetadata {

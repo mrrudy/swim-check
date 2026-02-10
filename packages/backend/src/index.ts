@@ -19,9 +19,10 @@ import { scraperRegistry } from './scrapers/registry.js';
 import { examplePoolScraper, EXAMPLE_POOL_ID } from './scrapers/pools/example/index.js';
 import { aquaparkWroclawScraper, AQUAPARK_POOL_ID } from './scrapers/pools/aquapark-wroclaw-borowska/index.js';
 import { slezaCentrumScraper, SLEZA_POOL_ID } from './scrapers/pools/sleza-centrum/index.js';
+import { teatralnaBasen1Scraper, TEATRALNA_POOL_ID } from './scrapers/pools/teatralna-basen1/index.js';
 import { createLanesForPool, getPoolById } from './db/queries.js';
-import { startScheduler, checkAndScrapeOnStartup } from './services/scheduler.js';
-import { scrapeAllPools } from './services/scrapeOrchestrator.js';
+import { startScheduler, startPerPoolIntervals, checkAndScrapeOnStartup } from './services/scheduler.js';
+import { scrapeAllPools, scrapePool } from './services/scrapeOrchestrator.js';
 import { resetAllScrapeStates } from './services/scrapeState.js';
 
 // Validate configuration at startup
@@ -86,6 +87,17 @@ async function seedPools() {
   );
   scraperRegistry.register(slezaCentrumScraper);
   console.log('Registered Centrum Ślęża scraper');
+
+  // Seed SPA Teatralna - Basen 1 (010-teatralna-pool-scraper)
+  await seedPool(
+    TEATRALNA_POOL_ID,
+    'SPA Teatralna - Basen 1',
+    'ul. Teatralna 10-12, Wrocław',
+    'https://klient.spa.wroc.pl/index.php?s=basen_1',
+    5
+  );
+  scraperRegistry.register(teatralnaBasen1Scraper);
+  console.log('Registered SPA Teatralna - Basen 1 scraper');
 }
 
 async function main() {
@@ -115,6 +127,14 @@ async function main() {
     console.log('[Scheduler] Midnight trigger - starting scrape');
     scrapeAllPools().catch((err) => {
       console.error('[Scheduler] Midnight scrape failed:', err);
+    });
+  });
+
+  // Start per-pool interval scrapers (010-teatralna-pool-scraper)
+  startPerPoolIntervals((poolId) => {
+    console.log(`[Scheduler] Per-pool interval trigger for ${poolId}`);
+    scrapePool(poolId).catch((err) => {
+      console.error(`[Scheduler] Per-pool interval scrape failed for ${poolId}:`, err);
     });
   });
 

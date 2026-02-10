@@ -9,6 +9,7 @@
 
 import { config } from '../config.js';
 import { getPoolsNeedingScrapeToday } from '../db/scrapeJobs.js';
+import { scraperRegistry } from '../scrapers/registry.js';
 
 // Internal scheduler state
 let nextRunTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -16,6 +17,9 @@ let isRunning = false;
 let nextScheduledRun: Date | null = null;
 let lastRunTimestamp: Date | null = null;
 let onMidnightCallback: (() => void) | null = null;
+
+// Per-pool interval state (010-teatralna-pool-scraper)
+const perPoolIntervals: Map<string, ReturnType<typeof setInterval>> = new Map();
 
 /**
  * Calculate milliseconds until next midnight (local time)
@@ -95,6 +99,28 @@ export function startScheduler(callback: () => void): void {
 }
 
 /**
+ * Start per-pool interval scrapers (010-teatralna-pool-scraper)
+ * For each registered scraper with scrapeIntervalHours, starts a setInterval
+ * that calls the provided callback with the pool ID.
+ */
+export function startPerPoolIntervals(scrapeCallback: (poolId: string) => void): void {
+  const scrapers = scraperRegistry.getAll();
+
+  for (const scraper of scrapers) {
+    if (scraper.scrapeIntervalHours && scraper.scrapeIntervalHours > 0) {
+      const intervalMs = scraper.scrapeIntervalHours * 60 * 60 * 1000;
+      const interval = setInterval(() => {
+        scrapeCallback(scraper.poolId);
+      }, intervalMs);
+      perPoolIntervals.set(scraper.poolId, interval);
+      console.log(
+        `[Scheduler] Per-pool interval started for ${scraper.name} (${scraper.poolId}): every ${scraper.scrapeIntervalHours}h`
+      );
+    }
+  }
+}
+
+/**
  * Stop the scheduler
  */
 export function stopScheduler(): void {
@@ -102,6 +128,13 @@ export function stopScheduler(): void {
     clearTimeout(nextRunTimeout);
     nextRunTimeout = null;
   }
+
+  // Clear per-pool intervals (010-teatralna-pool-scraper)
+  for (const [poolId, interval] of perPoolIntervals) {
+    clearInterval(interval);
+    console.log(`[Scheduler] Per-pool interval cleared for ${poolId}`);
+  }
+  perPoolIntervals.clear();
 
   isRunning = false;
   nextScheduledRun = null;
@@ -117,11 +150,23 @@ export function getSchedulerState(): {
   isRunning: boolean;
   nextScheduledRun: Date | null;
   lastRunTimestamp: Date | null;
+  perPoolIntervals: Array<{ poolId: string; intervalHours: number }>;
 } {
+  const intervals: Array<{ poolId: string; intervalHours: number }> = [];
+  for (const scraper of scraperRegistry.getAll()) {
+    if (scraper.scrapeIntervalHours && perPoolIntervals.has(scraper.poolId)) {
+      intervals.push({
+        poolId: scraper.poolId,
+        intervalHours: scraper.scrapeIntervalHours,
+      });
+    }
+  }
+
   return {
     isRunning,
     nextScheduledRun,
     lastRunTimestamp,
+    perPoolIntervals: intervals,
   };
 }
 

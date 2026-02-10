@@ -89,9 +89,7 @@ availabilityRouter.get('/:poolId/availability', asyncHandler(async (req: Request
       totalLaneCount: availability.totalLaneCount,
     };
 
-    // Set appropriate status code based on freshness
-    const statusCode = availability.dataFreshness === 'unavailable' ? 503 : 200;
-    res.status(statusCode).json(response);
+    res.status(200).json(response);
   } catch (error) {
     console.error('Error fetching availability:', error);
     return sendError(res, 500, 'AVAILABILITY_ERROR', 'Failed to fetch availability');

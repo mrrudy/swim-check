@@ -64,7 +64,13 @@
       "mcp__plugin_serena_serena__think_about_collected_information",
       "mcp__plugin_serena_serena__think_about_task_adherence",
       "mcp__plugin_serena_serena__think_about_whether_you_are_done",
-      "mcp__plugin_serena_serena__find_symbol"
+      "mcp__plugin_serena_serena__find_symbol",
+      "WebFetch(domain:www.spa.wroc.pl)",
+      "WebFetch(domain:spa.wroc.pl)",
+      "WebFetch(domain:klient.spa.wroc.pl)",
+      "mcp__playwright__browser_evaluate",
+      "mcp__playwright__browser_run_code",
+      "mcp__plugin_serena_serena__find_file"
     ]
   }
 }

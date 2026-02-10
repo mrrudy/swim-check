@@ -115,6 +115,15 @@ const styles = {
     color: '#856404',
     marginBottom: '16px',
   } as React.CSSProperties,
+  unavailableIndicator: {
+    padding: '12px 16px',
+    backgroundColor: '#e8f4fd',
+    border: '1px solid #90caf9',
+    borderRadius: '4px',
+    fontSize: '14px',
+    color: '#1565c0',
+    marginBottom: '16px',
+  } as React.CSSProperties,
   refreshingOverlay: {
     position: 'relative',
   } as React.CSSProperties,
@@ -386,10 +395,16 @@ export function PoolDetail() {
         )}
       </div>
 
+      {/* Unavailable data indicator */}
+      {availability?.dataFreshness === 'unavailable' && (
+        <div style={styles.unavailableIndicator} className="unavailable-indicator">
+          <span>No availability data yet for this pool. Data will appear after the next scheduled scrape. You can also try clicking Refresh.</span>
+        </div>
+      )}
+
       {/* Stale data indicator */}
       {availability?.dataFreshness === 'stale' && (
         <div style={styles.staleIndicator} className="stale-indicator">
-          <span>⚠</span>
           <span>Data may be outdated. Click Refresh for latest availability.</span>
         </div>
       )}
