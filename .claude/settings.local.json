@@ -70,7 +70,9 @@
       "WebFetch(domain:klient.spa.wroc.pl)",
       "mcp__playwright__browser_evaluate",
       "mcp__playwright__browser_run_code",
-      "mcp__plugin_serena_serena__find_file"
+      "mcp__plugin_serena_serena__find_file",
+      "WebFetch(domain:aquapark.wroc.pl)",
+      "Bash(del \"c:\\\\dev\\\\swim-check\\\\packages\\\\backend\\\\test-brochow.mts\")"
     ]
   }
 }

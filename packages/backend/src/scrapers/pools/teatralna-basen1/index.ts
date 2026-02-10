@@ -17,7 +17,6 @@ import { TEATRALNA_CONFIG } from './config.js';
 import {
   parseScheduleTable,
   spotsToLanes,
-  calculateTotalLanes,
 } from './parser.js';
 
 export const TEATRALNA_POOL_ID = TEATRALNA_CONFIG.POOL_ID;
@@ -47,12 +46,11 @@ export class TeatralnaBasen1Scraper implements PoolScraper {
     // Format date for URL parameter
     const dateStr = date.toISOString().split('T')[0];
 
-    // Fetch the schedule via the AJAX endpoint (the main page loads it dynamically)
-    const url = `${TEATRALNA_CONFIG.AJAX_SCHEDULE_URL}?date=${dateStr}`;
+    // Fetch the full booking page which contains the table#schedule grid.
+    // The AJAX endpoint (ajax_calendar.php) returns a different HTML format
+    // (timetable-list panels) that doesn't match the parser's expected structure.
+    const url = `${TEATRALNA_CONFIG.SCHEDULE_URL}&date=${dateStr}`;
     const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `ids=${TEATRALNA_CONFIG.BOOKING_IDS}&ct=&ctq=`,
       signal: AbortSignal.timeout(30000),
     });
 
@@ -80,8 +78,11 @@ export class TeatralnaBasen1Scraper implements PoolScraper {
       return [];
     }
 
-    // Filter slots within the requested time range and convert to LaneAvailability
-    const results: LaneAvailability[] = [];
+    // Filter slots within the requested time range and convert to LaneAvailability.
+    // Use a Map keyed by laneId to deduplicate across half-hour sub-slots
+    // (each hourly source slot maps to two 30-min slots). When multiple sub-slots
+    // fall within the requested range, take the worst-case (unavailable wins).
+    const laneMap = new Map<string, LaneAvailability>();
     const now = new Date();
 
     const requestedStart = timeToMinutes(timeSlot.startTime);
@@ -90,7 +91,6 @@ export class TeatralnaBasen1Scraper implements PoolScraper {
     for (const slot of targetDay.slots) {
       if (!slot.isActive) {
         // Inactive slots: all lanes unavailable, mapped to two 30-min slots
-        const slotMinutes = timeToMinutes(slot.hour);
         const halfHours = getHalfHourSlots(slot.hour);
 
         for (const halfHour of halfHours) {
@@ -99,7 +99,7 @@ export class TeatralnaBasen1Scraper implements PoolScraper {
             continue;
 
           for (const [laneNumber, laneId] of laneIds) {
-            results.push({
+            laneMap.set(laneId, {
               laneId,
               laneNumber,
               isAvailable: false,
@@ -115,11 +115,6 @@ export class TeatralnaBasen1Scraper implements PoolScraper {
         slot.freeSpots,
         TEATRALNA_CONFIG.SPOTS_PER_LANE
       );
-      const totalLaneCount = calculateTotalLanes(
-        slot.maxSpots,
-        TEATRALNA_CONFIG.SPOTS_PER_LANE,
-        TEATRALNA_CONFIG.TOTAL_SPOTS
-      );
 
       // Map hourly slot to two 30-minute slots
       const halfHours = getHalfHourSlots(slot.hour);
@@ -129,19 +124,22 @@ export class TeatralnaBasen1Scraper implements PoolScraper {
         if (halfMinutes < requestedStart || halfMinutes >= requestedEnd)
           continue;
 
-        // Mark first N lanes as available, rest as unavailable
+        // Mark first N lanes as available, rest as unavailable.
+        // If a lane was already marked unavailable by a prior sub-slot, keep it unavailable.
         for (const [laneNumber, laneId] of laneIds) {
-          results.push({
+          const existing = laneMap.get(laneId);
+          const isAvailable = laneNumber <= availableLaneCount;
+          laneMap.set(laneId, {
             laneId,
             laneNumber,
-            isAvailable: laneNumber <= availableLaneCount,
+            isAvailable: existing ? existing.isAvailable && isAvailable : isAvailable,
             lastUpdated: now,
           });
         }
       }
     }
 
-    return results;
+    return Array.from(laneMap.values());
   }
 
   async isHealthy(): Promise<boolean> {

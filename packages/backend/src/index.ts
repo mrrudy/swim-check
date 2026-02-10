@@ -20,6 +20,7 @@ import { examplePoolScraper, EXAMPLE_POOL_ID } from './scrapers/pools/example/in
 import { aquaparkWroclawScraper, AQUAPARK_POOL_ID } from './scrapers/pools/aquapark-wroclaw-borowska/index.js';
 import { slezaCentrumScraper, SLEZA_POOL_ID } from './scrapers/pools/sleza-centrum/index.js';
 import { teatralnaBasen1Scraper, TEATRALNA_POOL_ID } from './scrapers/pools/teatralna-basen1/index.js';
+import { aquaparkWroclawBrochowScraper, AQUAPARK_BROCHOW_POOL_ID } from './scrapers/pools/aquapark-wroclaw-brochow/index.js';
 import { createLanesForPool, getPoolById } from './db/queries.js';
 import { startScheduler, startPerPoolIntervals, checkAndScrapeOnStartup } from './services/scheduler.js';
 import { scrapeAllPools, scrapePool } from './services/scrapeOrchestrator.js';
@@ -98,6 +99,17 @@ async function seedPools() {
   );
   scraperRegistry.register(teatralnaBasen1Scraper);
   console.log('Registered SPA Teatralna - Basen 1 scraper');
+
+  // Seed Aquapark Wrocław Brochów - Basen Rekreacyjny
+  await seedPool(
+    AQUAPARK_BROCHOW_POOL_ID,
+    'Aquapark Wrocław Brochów - Basen Rekreacyjny',
+    'ul. Brochowska 2, Wrocław',
+    'https://aquapark.wroc.pl/pl/grafik-brochow',
+    7
+  );
+  scraperRegistry.register(aquaparkWroclawBrochowScraper);
+  console.log('Registered Aquapark Wrocław Brochów scraper');
 }
 
 async function main() {

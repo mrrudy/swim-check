@@ -12,7 +12,7 @@ const fixtureHtml = readFileSync(
 vi.stubGlobal(
   'fetch',
   vi.fn().mockImplementation((url: string, init?: RequestInit) => {
-    // The scraper now POSTs to ajax_calendar.php; return fixture HTML for any fetch
+    // The scraper GETs the full booking page; return fixture HTML for any fetch
     return Promise.resolve({
       ok: true,
       text: () => Promise.resolve(fixtureHtml),
@@ -93,15 +93,15 @@ describe('TeatralnaBasen1Scraper', () => {
       }
     });
 
-    it('should duplicate hourly slots into 30-minute slots', async () => {
+    it('should deduplicate lanes across half-hour sub-slots within an hour', async () => {
       const date = new Date('2026-02-10');
-      // Request a single hour — should produce availability for both :00 and :30 slots
+      // Request a single hour — both :00 and :30 sub-slots come from the same hourly source
       const timeSlot: TimeSlot = { startTime: '09:00', endTime: '10:00' };
 
       const availability = await scraper.fetchAvailability(date, timeSlot);
 
-      // With 5 lanes and 2 half-hour slots (09:00-09:30 and 09:30-10:00), we expect 10 entries
-      expect(availability.length).toBe(10);
+      // With 5 lanes, we expect exactly 5 entries (one per lane, deduplicated)
+      expect(availability.length).toBe(5);
     });
 
     it('should show 5 available lanes when 30 spots are free (full availability)', async () => {
@@ -147,7 +147,7 @@ describe('TeatralnaBasen1Scraper', () => {
       expect(availability).toHaveLength(0);
     });
 
-    it('should POST to the AJAX endpoint with correct parameters', async () => {
+    it('should GET the full booking page with date parameter', async () => {
       const date = new Date('2026-02-10');
       const timeSlot: TimeSlot = { startTime: '09:00', endTime: '10:00' };
 
@@ -158,10 +158,9 @@ describe('TeatralnaBasen1Scraper', () => {
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
       const [url, init] = mockFetch.mock.calls[0];
-      expect(url).toContain('ajax_calendar.php');
+      expect(url).toContain('index.php?s=basen_1');
       expect(url).toContain('date=2026-02-10');
-      expect(init.method).toBe('POST');
-      expect(init.body).toContain('ids=21');
+      expect(init?.method).toBeUndefined();
     });
   });
 
