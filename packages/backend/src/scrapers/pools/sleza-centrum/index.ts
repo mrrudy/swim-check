@@ -7,7 +7,7 @@
  * Schedule page: https://www.centrumsleza.pl/grafiki/
  */
 
-import { google, type sheets_v4 } from 'googleapis';
+import { sheets, type sheets_v4 } from '@googleapis/sheets';
 import type { PoolScraper } from '../../types.js';
 import type { TimeSlot, LaneAvailability } from '@swim-check/shared';
 import {
@@ -40,7 +40,7 @@ function getSheetsClient(): sheets_v4.Sheets {
     throw new Error('GOOGLE_SHEETS_API_KEY environment variable is not set');
   }
 
-  return google.sheets({
+  return sheets({
     version: 'v4',
     auth: config.googleSheetsApiKey,
   });

@@ -11,6 +11,7 @@
     }
   },
   "scripts": {
+    "clean": "tsc --build --clean",
     "build": "tsc",
     "dev": "tsc --watch",
     "lint": "echo 'No lint configured'"

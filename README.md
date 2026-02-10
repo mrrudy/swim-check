@@ -152,7 +152,7 @@ npm --version    # 9+
 Clone the repository and install dependencies:
 
 ```bash
-git clone <repository-url> swim-check
+git clone https://github.com/mrrudy/swim-check/
 cd swim-check
 npm install
 ```
