@@ -75,6 +75,90 @@ npm run lint
 
 ## Production Deployment
 
+### Install Node.js & npm
+
+#### Windows
+
+Download and run the Node.js 20 LTS installer from https://nodejs.org/. The installer includes npm. Verify:
+
+```powershell
+node --version   # v20.x.x
+npm --version    # 9+
+```
+
+#### macOS
+
+Using Homebrew:
+
+```bash
+brew install node@20
+```
+
+Or download the `.pkg` installer from https://nodejs.org/.
+
+Verify:
+
+```bash
+node --version   # v20.x.x
+npm --version    # 9+
+```
+
+#### Linux
+
+##### Ubuntu / Debian
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+```
+
+##### Fedora
+
+```bash
+sudo dnf module enable nodejs:20
+sudo dnf install nodejs
+```
+
+##### Arch Linux
+
+```bash
+sudo pacman -S nodejs npm
+```
+
+##### openSUSE
+
+```bash
+sudo zypper install nodejs20
+```
+
+##### Alternative: nvm (any distro)
+
+```bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+source ~/.bashrc
+nvm install 20
+nvm use 20
+```
+
+Verify:
+
+```bash
+node --version   # v20.x.x
+npm --version    # 9+
+```
+
+### Install the App
+
+Clone the repository and install dependencies:
+
+```bash
+git clone <repository-url> swim-check
+cd swim-check
+npm install
+```
+
+This installs dependencies for all workspace packages (backend, frontend, shared).
+
 ### Build
 
 ```bash
