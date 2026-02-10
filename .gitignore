@@ -39,3 +39,9 @@ coverage/
 .cache/
 .playwright-mcp/
 
+# Dev tooling
+.claude/
+.specify/
+.serena/
+.github/
+specs/
