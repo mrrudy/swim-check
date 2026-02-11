@@ -113,16 +113,27 @@ export class AvailabilityService {
         return await scraper.fetchAvailability(date, timeSlot);
       } catch (error) {
         lastError = error as Error;
-        console.warn(`Scrape attempt ${attempt} failed:`, error);
+        const isRateLimited = this.isRateLimitError(error);
+        console.warn(`Scrape attempt ${attempt} failed${isRateLimited ? ' (rate limited)' : ''}:`, error);
 
         if (attempt < maxRetries) {
-          // Exponential backoff: 1s, 2s, 4s...
-          await this.delay(Math.pow(2, attempt - 1) * 1000);
+          // Use longer backoff for rate limit errors (30s, 60s) vs normal errors (1s, 2s, 4s)
+          const baseDelay = isRateLimited ? 30000 : 1000;
+          await this.delay(Math.pow(2, attempt - 1) * baseDelay);
         }
       }
     }
 
     throw lastError || new Error('Scrape failed after retries');
+  }
+
+  private isRateLimitError(error: unknown): boolean {
+    if (error && typeof error === 'object') {
+      const err = error as Record<string, unknown>;
+      if (err.status === 429 || err.code === 429) return true;
+      if (typeof err.message === 'string' && err.message.includes('Quota exceeded')) return true;
+    }
+    return false;
   }
 
   private getStaleCacheEntry(cacheKey: string): CachedAvailability | null {

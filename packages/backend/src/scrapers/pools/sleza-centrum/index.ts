@@ -32,6 +32,20 @@ export const GOOGLE_SHEETS_CONFIG = {
   DATA_RANGE: 'BASEN!A1:AQ72',
 };
 
+// Google Sheets API rate limiting
+// Quota: 60 read requests per minute per user
+const SHEET_CACHE_TTL_MS = 5 * 60 * 1000; // Cache sheet data for 5 minutes
+const MIN_REQUEST_INTERVAL_MS = 2000; // Minimum 2s between actual API calls
+
+interface SheetDataCache {
+  cells: CellData[];
+  weekStartDate: Date;
+  fetchedAt: number;
+}
+
+let sheetDataCache: SheetDataCache | null = null;
+let lastApiCallTime = 0;
+
 /**
  * Get the Google Sheets API client configured with API key
  */
@@ -49,12 +63,32 @@ function getSheetsClient(): sheets_v4.Sheets {
 /**
  * Fetch cell data including background colors using Google Sheets API v4
  * The key is using includeGridData=true which returns cell formatting
+ *
+ * Uses in-memory cache (5 min TTL) to avoid hitting the Google Sheets API
+ * quota of 60 read requests per minute per user.
+ * The sheet contains the entire weekly schedule, so the same data serves
+ * all date/time slot queries within the cache window.
  */
 async function fetchSheetData(): Promise<{ cells: CellData[]; weekStartDate: Date }> {
-  const sheets = getSheetsClient();
+  const now = Date.now();
+
+  // Return cached data if still valid
+  if (sheetDataCache && (now - sheetDataCache.fetchedAt) < SHEET_CACHE_TTL_MS) {
+    return { cells: sheetDataCache.cells, weekStartDate: sheetDataCache.weekStartDate };
+  }
+
+  // Rate-limit actual API calls: wait if we called too recently
+  const timeSinceLastCall = now - lastApiCallTime;
+  if (timeSinceLastCall < MIN_REQUEST_INTERVAL_MS) {
+    const waitTime = MIN_REQUEST_INTERVAL_MS - timeSinceLastCall;
+    await new Promise((resolve) => setTimeout(resolve, waitTime));
+  }
+
+  const sheetsClient = getSheetsClient();
+  lastApiCallTime = Date.now();
 
   // Fetch spreadsheet with grid data (includes cell formatting)
-  const response = await sheets.spreadsheets.get({
+  const response = await sheetsClient.spreadsheets.get({
     spreadsheetId: GOOGLE_SHEETS_CONFIG.SPREADSHEET_ID,
     ranges: [GOOGLE_SHEETS_CONFIG.DATA_RANGE],
     includeGridData: true,
@@ -62,6 +96,9 @@ async function fetchSheetData(): Promise<{ cells: CellData[]; weekStartDate: Dat
 
   const cells = parseGridData(response.data);
   const weekStartDate = getWeekStartDate();
+
+  // Update cache
+  sheetDataCache = { cells, weekStartDate, fetchedAt: Date.now() };
 
   return { cells, weekStartDate };
 }

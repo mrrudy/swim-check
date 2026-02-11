@@ -28,13 +28,31 @@ export function calculateDefaultStartTime(now: Date = new Date()): { date: strin
 
   futureTime.setMinutes(roundedMinutes, 0, 0);
 
-  // Format date as YYYY-MM-DD
-  const date = futureTime.toISOString().split('T')[0];
+  // Format date as YYYY-MM-DD (using local time to stay consistent with getHours())
+  const year = futureTime.getFullYear();
+  const month = (futureTime.getMonth() + 1).toString().padStart(2, '0');
+  const day = futureTime.getDate().toString().padStart(2, '0');
+  let date = `${year}-${month}-${day}`;
 
   // Format time as HH:MM
   const hours = futureTime.getHours().toString().padStart(2, '0');
   const mins = futureTime.getMinutes().toString().padStart(2, '0');
-  const time = `${hours}:${mins}`;
+  let time = `${hours}:${mins}`;
+
+  // Operating-hours clamping (011-smart-slot-selection)
+  if (time >= '22:00') {
+    // After closing: advance to next day at opening
+    const nextDay = new Date(futureTime);
+    nextDay.setDate(nextDay.getDate() + 1);
+    const ny = nextDay.getFullYear();
+    const nm = (nextDay.getMonth() + 1).toString().padStart(2, '0');
+    const nd = nextDay.getDate().toString().padStart(2, '0');
+    date = `${ny}-${nm}-${nd}`;
+    time = '05:00';
+  } else if (time < '05:00') {
+    // Before opening: clamp to opening time, same day
+    time = '05:00';
+  }
 
   return { date, time };
 }

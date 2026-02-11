@@ -183,12 +183,14 @@ export function PoolDetail() {
     forwardSlotCount: viewPreferences.forwardSlotCount,
   });
 
-  // Slot navigation - controlled by unified state
+  // Slot navigation - controlled by unified state (with cross-day support)
   const navigation = useSlotNavigation({
     startTime: state.startTime,
     duration: state.duration,
     forwardSlotCount: viewPreferences.forwardSlotCount,
     onNavigate: handleNavigation,
+    date: state.date,
+    onDateChange: setDate,
   });
 
   // Fetch availability function with AbortController support

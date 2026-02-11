@@ -125,6 +125,64 @@ export function canReduceDuration(currentDuration: number): boolean {
 }
 
 // ==========================================
+// Operating Hours Helpers (011-smart-slot-selection)
+// ==========================================
+
+/**
+ * Check if a time is outside pool operating hours (before 05:00 or at/after 22:00)
+ * @param time - Time string in HH:MM format
+ * @returns true if outside operating hours
+ */
+export function isOutsideOperatingHours(time: string): boolean {
+  return time >= SLOT_CONSTANTS.LAST_SLOT || time < SLOT_CONSTANTS.FIRST_SLOT;
+}
+
+/**
+ * Get the next calendar day in YYYY-MM-DD format
+ * Uses noon to avoid DST boundary issues
+ * @param dateStr - Date string in YYYY-MM-DD format
+ * @returns Next day in YYYY-MM-DD format
+ */
+export function getNextDay(dateStr: string): string {
+  const d = new Date(dateStr + 'T12:00:00');
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().split('T')[0];
+}
+
+/**
+ * Get the previous calendar day in YYYY-MM-DD format
+ * Uses noon to avoid DST boundary issues
+ * @param dateStr - Date string in YYYY-MM-DD format
+ * @returns Previous day in YYYY-MM-DD format
+ */
+export function getPreviousDay(dateStr: string): string {
+  const d = new Date(dateStr + 'T12:00:00');
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().split('T')[0];
+}
+
+/**
+ * Get the last available start time that allows a booking of the given duration
+ * before pool closing time (22:00)
+ * @param durationMins - Duration in minutes
+ * @returns Latest valid start time in HH:MM format
+ */
+export function getLastAvailableStartTime(durationMins: number): string {
+  const closingMinutes = 22 * 60; // 22:00 in minutes
+  const startMinutes = closingMinutes - durationMins;
+
+  // Clamp to opening time
+  const clampedMinutes = Math.max(5 * 60, startMinutes);
+
+  // Round down to nearest 30-minute mark
+  const roundedMinutes = Math.floor(clampedMinutes / 30) * 30;
+
+  const hours = Math.floor(roundedMinutes / 60);
+  const mins = roundedMinutes % 60;
+  return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+}
+
+// ==========================================
 // Forward Slots (005-pool-view-options)
 // ==========================================
 

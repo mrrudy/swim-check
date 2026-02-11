@@ -108,12 +108,14 @@ export function Home() {
   const timeSlotState = useTimeSlotState();
   const { state, setDate, setStartTime, setEndTime, handleNavigation, isInitialized } = timeSlotState;
 
-  // T028: Slot navigation hook for keyboard and button controls
+  // T028: Slot navigation hook for keyboard and button controls (with cross-day support)
   const navigation = useSlotNavigation({
     startTime: state.startTime,
     duration: state.duration,
     forwardSlotCount: viewPreferences.forwardSlotCount,
     onNavigate: handleNavigation,
+    date: state.date,
+    onDateChange: setDate,
   });
 
   // T017: Integrate useCombinedFavoritesData hook

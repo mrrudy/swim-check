@@ -10,6 +10,7 @@ import {
   getSlotIndex,
   calculateDuration,
   calculateEndTime,
+  getNextDay,
 } from '../utils/timeSlotUtils';
 import { api } from '../services/api';
 
@@ -72,19 +73,19 @@ export interface UseTimeSlotStateReturn {
   /** Set the end time */
   setEndTime: (endTime: string) => void;
 
-  /** Handle navigation changes from arrow controls */
-  handleNavigation: (startTime: string, endTime: string, duration: number) => void;
+  /** Handle navigation changes from arrow controls (date param for cross-day navigation) */
+  handleNavigation: (startTime: string, endTime: string, duration: number, date?: string) => void;
 
   /** Whether state has been initialized (from API or defaults) */
   isInitialized: boolean;
 }
 
-function getDefaultDate(): string {
-  const today = new Date();
-  return today.toISOString().split('T')[0];
-}
-
-function getDefaultStartTime(): string {
+/**
+ * Get default time slot fallback (used before API response arrives).
+ * Returns both date and time, applying operating-hours clamping.
+ * Exported for testing.
+ */
+export function getDefaultTimeSlotFallback(): { date: string; time: string } {
   const now = new Date();
   const minutes = now.getMinutes();
   const hours = now.getHours();
@@ -98,11 +99,21 @@ function getDefaultStartTime(): string {
   const finalHours = targetMinutes >= 60 ? targetHours + 1 : targetHours;
   const finalMinutes = targetMinutes >= 60 ? targetMinutes - 60 : targetMinutes;
 
-  // Clamp to available range
-  if (finalHours < 5) return SLOT_CONSTANTS.FIRST_SLOT;
-  if (finalHours >= 22) return '21:00';
+  const year = now.getFullYear();
+  const month = (now.getMonth() + 1).toString().padStart(2, '0');
+  const day = now.getDate().toString().padStart(2, '0');
+  const today = `${year}-${month}-${day}`;
 
-  return `${finalHours.toString().padStart(2, '0')}:${finalMinutes.toString().padStart(2, '0')}`;
+  // Operating-hours clamping (011-smart-slot-selection)
+  if (finalHours >= 22) {
+    return { date: getNextDay(today), time: '05:00' };
+  }
+  if (finalHours < 5) {
+    return { date: today, time: '05:00' };
+  }
+
+  const time = `${finalHours.toString().padStart(2, '0')}:${finalMinutes.toString().padStart(2, '0')}`;
+  return { date: today, time };
 }
 
 function validateStartTime(time: string): string {
@@ -133,11 +144,12 @@ export function useTimeSlotState(
 ): UseTimeSlotStateReturn {
   const { defaultDuration = 60 } = props;
 
-  // Core state
-  const [date, setDateInternal] = useState(getDefaultDate());
-  const [startTime, setStartTimeInternal] = useState(getDefaultStartTime());
+  // Core state — date and startTime computed together for operating-hours awareness
+  const [initialDefaults] = useState(() => getDefaultTimeSlotFallback());
+  const [date, setDateInternal] = useState(initialDefaults.date);
+  const [startTime, setStartTimeInternal] = useState(initialDefaults.time);
   const [endTime, setEndTimeInternal] = useState(() =>
-    calculateEndTime(getDefaultStartTime(), defaultDuration)
+    calculateEndTime(initialDefaults.time, defaultDuration)
   );
   const [isInitialized, setIsInitialized] = useState(false);
   const [savedDuration, setSavedDuration] = useState(defaultDuration);
@@ -217,15 +229,19 @@ export function useTimeSlotState(
     });
   }, [startTime]);
 
-  // Navigation handler for arrow controls
+  // Navigation handler for arrow controls (with optional date for cross-day navigation)
   const handleNavigation = useCallback(
-    (newStartTime: string, newEndTime: string, newDuration: number) => {
+    (newStartTime: string, newEndTime: string, newDuration: number, newDate?: string) => {
       const validStartTime = validateStartTime(newStartTime);
       const validEndTime = validateEndTime(newEndTime, validStartTime);
 
       setStartTimeInternal(validStartTime);
       setEndTimeInternal(validEndTime);
       setSavedDuration(newDuration);
+
+      if (newDate) {
+        setDateInternal(newDate);
+      }
     },
     []
   );

@@ -1,4 +1,4 @@
-# swim-check Development Guidelines
+﻿# swim-check Development Guidelines
 
 ## Tech Stack
 - **Backend:** TypeScript 5.3.3, Node.js 20 LTS, Express.js 4.18.2, sql.js 1.10.0, Cheerio
