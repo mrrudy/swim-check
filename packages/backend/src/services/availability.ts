@@ -41,6 +41,10 @@ export class AvailabilityService {
     const dateStr = this.formatDate(date);
     const cacheKey = getCacheKey(poolId, dateStr, timeSlot.startTime, timeSlot.endTime);
 
+    // Resolve per-pool cache TTL from scraper metadata
+    const scraper = scraperRegistry.get(poolId);
+    const cacheTtlSeconds = this.getPoolCacheTtl(scraper);
+
     // Check cache unless force refresh
     if (!forceRefresh) {
       const cached = availabilityCache.get<CachedAvailability>(cacheKey);
@@ -57,7 +61,6 @@ export class AvailabilityService {
     }
 
     // Try to scrape fresh data
-    const scraper = scraperRegistry.get(poolId);
     if (!scraper) {
       // No scraper available - check for stale cache
       const stale = this.getStaleCacheEntry(cacheKey);
@@ -82,8 +85,8 @@ export class AvailabilityService {
       const lanes = await this.scrapeWithRetry(scraper, date, timeSlot);
       const scrapedAt = new Date();
 
-      // Cache the result
-      availabilityCache.set(cacheKey, { lanes, scrapedAt });
+      // Cache the result with per-pool TTL
+      availabilityCache.set(cacheKey, { lanes, scrapedAt }, cacheTtlSeconds);
 
       return this.buildResponse(pool, dateStr, timeSlot, lanes, 'fresh', scrapedAt);
     } catch (error) {
@@ -98,6 +101,13 @@ export class AvailabilityService {
       // No data available
       return this.buildResponse(pool, dateStr, timeSlot, [], 'unavailable');
     }
+  }
+
+
+  private getPoolCacheTtl(scraper: { cacheTtlSeconds?: number; scrapeIntervalHours?: number } | undefined): number {
+    const DEFAULT_TTL_HOURS = 24;
+    if (!scraper) return DEFAULT_TTL_HOURS * 3600;
+    return scraper.cacheTtlSeconds ?? (scraper.scrapeIntervalHours ? scraper.scrapeIntervalHours * 3600 : DEFAULT_TTL_HOURS * 3600);
   }
 
   private async scrapeWithRetry(
