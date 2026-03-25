@@ -6,7 +6,7 @@
 
 import type { PoolScraper } from '../../types.js';
 import type { TimeSlot, LaneAvailability, ResolvedSourceLink } from '@swim-check/shared';
-import { parsePdfBuffer, filterSlotsForTimeSlot } from '../aquapark-wroclaw-borowska/parser.js';
+import { parsePdfBuffer, filterSlotsForTimeSlot, type ParsedSchedule } from '../aquapark-wroclaw-borowska/parser.js';
 import { getLanesByPoolId } from '../../../db/queries.js';
 import * as cheerio from 'cheerio';
 
@@ -14,6 +14,17 @@ import * as cheerio from 'cheerio';
 export const AQUAPARK_BROCHOW_POOL_ID = '00000000-0000-0000-0000-000000000005';
 export const AQUAPARK_BROCHOW_BASE_URL = 'https://aquapark.wroc.pl';
 export const AQUAPARK_BROCHOW_SCHEDULE_URL = 'https://aquapark.wroc.pl/pl/grafik-brochow';
+
+// Internal parsed-data cache to avoid redundant PDF downloads during pre-population loop
+const PARSED_CACHE_TTL_MS = 60 * 1000; // 60 seconds
+
+interface ParsedDataCache {
+  parsedSchedule: ParsedSchedule;
+  pdfUrl: string;
+  fetchedAt: number;
+}
+
+let parsedDataCache: ParsedDataCache | null = null;
 
 export class AquaparkWroclawBrochowScraper implements PoolScraper {
   readonly poolId = AQUAPARK_BROCHOW_POOL_ID;
@@ -36,18 +47,30 @@ export class AquaparkWroclawBrochowScraper implements PoolScraper {
     }
 
     try {
-      const pdfUrl = await this.findPdfUrl();
+      // Use cached parsed data if available and fresh (avoids redundant PDF downloads during pre-population)
+      let parsedSchedule: ParsedSchedule;
+      const now_ms = Date.now();
 
-      if (!pdfUrl) {
-        console.warn('Could not find PDF URL on Brochów schedule page');
-        this.lastResolvedPdfUrl = null;
-        return this.getDefaultAvailability(laneIds);
+      if (parsedDataCache && (now_ms - parsedDataCache.fetchedAt) < PARSED_CACHE_TTL_MS) {
+        parsedSchedule = parsedDataCache.parsedSchedule;
+        this.lastResolvedPdfUrl = parsedDataCache.pdfUrl;
+      } else {
+        const pdfUrl = await this.findPdfUrl();
+
+        if (!pdfUrl) {
+          console.warn('Could not find PDF URL on Brochów schedule page');
+          this.lastResolvedPdfUrl = null;
+          return this.getDefaultAvailability(laneIds);
+        }
+
+        this.lastResolvedPdfUrl = pdfUrl;
+
+        const pdfBuffer = await this.downloadPdf(pdfUrl);
+        parsedSchedule = await parsePdfBuffer(pdfBuffer);
+
+        // Update cache
+        parsedDataCache = { parsedSchedule, pdfUrl, fetchedAt: now_ms };
       }
-
-      this.lastResolvedPdfUrl = pdfUrl;
-
-      const pdfBuffer = await this.downloadPdf(pdfUrl);
-      const parsedSchedule = await parsePdfBuffer(pdfBuffer);
 
       return filterSlotsForTimeSlot(parsedSchedule, date, timeSlot, laneIds);
     } catch (error) {
@@ -153,6 +176,26 @@ export class AquaparkWroclawBrochowScraper implements PoolScraper {
       { url: this.lastResolvedPdfUrl, label: 'PDF Schedule' },
     ];
   }
+
+  getAvailableDates(): string[] {
+    if (!parsedDataCache) return [];
+    return dayIndicesToDates(parsedDataCache.parsedSchedule.days.map(d => d.dayIndex));
+  }
 }
 
 export const aquaparkWroclawBrochowScraper = new AquaparkWroclawBrochowScraper();
+
+/**
+ * Convert day-of-week indices (0=Monday, 6=Sunday) to actual YYYY-MM-DD dates for the current week.
+ */
+function dayIndicesToDates(dayIndices: number[]): string[] {
+  const today = new Date();
+  const todayDayIndex = today.getDay() === 0 ? 6 : today.getDay() - 1;
+
+  return dayIndices.map(dayIndex => {
+    const diff = dayIndex - todayDayIndex;
+    const date = new Date(today);
+    date.setDate(today.getDate() + diff);
+    return date.toISOString().split('T')[0];
+  }).sort();
+}

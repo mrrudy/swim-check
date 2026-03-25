@@ -3,6 +3,7 @@
  */
 
 import type { PoolAvailability, TimeSlot, LaneAvailability } from '@swim-check/shared';
+import { SLOT_CONSTANTS } from '@swim-check/shared';
 import { scraperRegistry } from '../scrapers/registry.js';
 import { availabilityCache } from './cache.js';
 import { getPoolById, getLanesByPoolId } from '../db/queries.js';
@@ -15,17 +16,98 @@ interface CachedAvailability {
   scrapedAt: Date;
 }
 
-function getCacheKey(poolId: string, date: string, startTime: string, endTime: string): string {
+export function getCacheKey(poolId: string, date: string, startTime: string, endTime: string): string {
   return `availability:${poolId}:${date}:${startTime}:${endTime}`;
+}
+
+/**
+ * Calculate per-pool cache TTL based on scraper metadata.
+ * Priority: cacheTtlSeconds > scrapeIntervalHours * 3600 > 24h default
+ */
+export function getPoolCacheTtl(scraper: { cacheTtlSeconds?: number; scrapeIntervalHours?: number } | undefined): number {
+  const DEFAULT_TTL_HOURS = 24;
+  if (!scraper) return DEFAULT_TTL_HOURS * 3600;
+  return scraper.cacheTtlSeconds ?? (scraper.scrapeIntervalHours ? scraper.scrapeIntervalHours * 3600 : DEFAULT_TTL_HOURS * 3600);
+}
+
+/**
+ * Decompose a time range into 30-minute sub-slot boundaries.
+ * E.g. "06:00"-"08:00" → [["06:00","06:30"], ["06:30","07:00"], ["07:00","07:30"], ["07:30","08:00"]]
+ */
+export function decomposeIntoSubSlots(startTime: string, endTime: string): TimeSlot[] {
+  const step = SLOT_CONSTANTS.MIN_DURATION; // 30 minutes
+  const [sH, sM] = startTime.split(':').map(Number);
+  const [eH, eM] = endTime.split(':').map(Number);
+  const startMinutes = sH * 60 + sM;
+  const endMinutes = eH * 60 + eM;
+
+  const slots: TimeSlot[] = [];
+  let cursor = startMinutes;
+  while (cursor < endMinutes) {
+    const next = cursor + step;
+    const slotStart = `${Math.floor(cursor / 60).toString().padStart(2, '0')}:${(cursor % 60).toString().padStart(2, '0')}`;
+    const slotEnd = `${Math.floor(next / 60).toString().padStart(2, '0')}:${(next % 60).toString().padStart(2, '0')}`;
+    slots.push({ startTime: slotStart, endTime: slotEnd });
+    cursor = next;
+  }
+  return slots;
 }
 
 export class AvailabilityService {
   /**
+   * Try to assemble a cache hit from pre-populated 30-minute sub-slots.
+   * Returns merged lane data if ALL sub-slots are cached, otherwise null.
+   * A lane is considered available only if it is available in every sub-slot.
+   */
+  private tryGetFromSubSlotCache(
+    poolId: string,
+    dateStr: string,
+    timeSlot: TimeSlot
+  ): CachedAvailability | null {
+    const subSlots = decomposeIntoSubSlots(timeSlot.startTime, timeSlot.endTime);
+
+    // Only worth decomposing if there are multiple sub-slots
+    if (subSlots.length <= 1) return null;
+
+    const subResults: CachedAvailability[] = [];
+    for (const sub of subSlots) {
+      const subKey = getCacheKey(poolId, dateStr, sub.startTime, sub.endTime);
+      const cached = availabilityCache.get<CachedAvailability>(subKey);
+      if (!cached) return null; // Any miss means we can't assemble the full range
+      subResults.push(cached.value);
+    }
+
+    // Merge: a lane is available only if available in ALL sub-slots
+    // Use the first sub-slot's lanes as the template
+    const baseLanes = subResults[0].lanes;
+    const mergedLanes: LaneAvailability[] = baseLanes.map(lane => {
+      const availableInAll = subResults.every(sub => {
+        const matchingLane = sub.lanes.find(l => l.laneId === lane.laneId);
+        return matchingLane?.isAvailable ?? true; // if lane not found in sub-slot, assume available
+      });
+
+      return {
+        ...lane,
+        isAvailable: availableInAll,
+      };
+    });
+
+    // Use the oldest scrapedAt from all sub-slots
+    const oldestScrapedAt = subResults.reduce((oldest, sub) => {
+      const subTime = sub.scrapedAt instanceof Date ? sub.scrapedAt : new Date(sub.scrapedAt);
+      return subTime < oldest ? subTime : oldest;
+    }, subResults[0].scrapedAt instanceof Date ? subResults[0].scrapedAt : new Date(subResults[0].scrapedAt));
+
+    return { lanes: mergedLanes, scrapedAt: oldestScrapedAt };
+  }
+
+  /**
    * Get availability with cache-aside pattern:
-   * 1. Check cache
-   * 2. If miss, scrape
-   * 3. Store result
-   * 4. Return with freshness indicator
+   * 1. Check exact cache key
+   * 2. Try assembling from pre-populated 30-min sub-slot cache entries
+   * 3. If miss, scrape
+   * 4. Store result
+   * 5. Return with freshness indicator
    */
   async getAvailability(
     poolId: string,
@@ -43,10 +125,11 @@ export class AvailabilityService {
 
     // Resolve per-pool cache TTL from scraper metadata
     const scraper = scraperRegistry.get(poolId);
-    const cacheTtlSeconds = this.getPoolCacheTtl(scraper);
+    const cacheTtlSeconds = getPoolCacheTtl(scraper);
 
     // Check cache unless force refresh
     if (!forceRefresh) {
+      // 1. Try exact cache key match
       const cached = availabilityCache.get<CachedAvailability>(cacheKey);
       if (cached) {
         return this.buildResponse(
@@ -56,6 +139,19 @@ export class AvailabilityService {
           cached.value.lanes,
           'cached',
           cached.value.scrapedAt
+        );
+      }
+
+      // 2. Try assembling from pre-populated 30-min sub-slot cache entries
+      const assembled = this.tryGetFromSubSlotCache(poolId, dateStr, timeSlot);
+      if (assembled) {
+        return this.buildResponse(
+          pool,
+          dateStr,
+          timeSlot,
+          assembled.lanes,
+          'cached',
+          assembled.scrapedAt
         );
       }
     }
@@ -103,12 +199,6 @@ export class AvailabilityService {
     }
   }
 
-
-  private getPoolCacheTtl(scraper: { cacheTtlSeconds?: number; scrapeIntervalHours?: number } | undefined): number {
-    const DEFAULT_TTL_HOURS = 24;
-    if (!scraper) return DEFAULT_TTL_HOURS * 3600;
-    return scraper.cacheTtlSeconds ?? (scraper.scrapeIntervalHours ? scraper.scrapeIntervalHours * 3600 : DEFAULT_TTL_HOURS * 3600);
-  }
 
   private async scrapeWithRetry(
     scraper: { fetchAvailability: (date: Date, timeSlot: TimeSlot) => Promise<LaneAvailability[]> },

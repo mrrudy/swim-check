@@ -43,6 +43,13 @@ export interface PoolScraper extends PoolScraperMetadata {
    * @returns Array of resolved source links, or undefined if not applicable
    */
   getResolvedSourceUrls?(): ResolvedSourceLink[] | undefined;
+
+  /**
+   * Get the dates for which this scraper has cached data (012-scrape-cache-prepopulate).
+   * Called after a successful scrape to determine which dates to pre-populate in the cache.
+   * @returns Array of date strings (YYYY-MM-DD), or undefined if not supported
+   */
+  getAvailableDates?(): string[];
 }
 
 export interface ScraperConfig {

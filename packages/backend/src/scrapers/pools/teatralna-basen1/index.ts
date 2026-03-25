@@ -21,6 +21,19 @@ import {
 
 export const TEATRALNA_POOL_ID = TEATRALNA_CONFIG.POOL_ID;
 
+// Internal HTML cache to avoid redundant external fetches during pre-population loop
+// Follows the Sleza sheetDataCache pattern
+const HTML_CACHE_TTL_MS = 60 * 1000; // 60 seconds - sufficient for pre-population loop
+
+interface HtmlCache {
+  html: string;
+  parsedDays: ReturnType<typeof parseScheduleTable>;
+  dateStr: string;
+  fetchedAt: number;
+}
+
+let htmlCache: HtmlCache | null = null;
+
 export class TeatralnaBasen1Scraper implements PoolScraper {
   readonly poolId = TEATRALNA_CONFIG.POOL_ID;
   readonly name = 'teatralna-basen1';
@@ -46,31 +59,36 @@ export class TeatralnaBasen1Scraper implements PoolScraper {
     // Format date for URL parameter
     const dateStr = date.toISOString().split('T')[0];
 
-    // Fetch the full booking page which contains the table#schedule grid.
-    // The AJAX endpoint (ajax_calendar.php) returns a different HTML format
-    // (timetable-list panels) that doesn't match the parser's expected structure.
-    const url = `${TEATRALNA_CONFIG.SCHEDULE_URL}&date=${dateStr}`;
-    const response = await fetch(url, {
-      signal: AbortSignal.timeout(30000),
-    });
+    // Use cached HTML+parsed data if available and fresh (avoids redundant fetches during pre-population)
+    let parsedDays: ReturnType<typeof parseScheduleTable>;
+    const now_ms = Date.now();
+    if (htmlCache && htmlCache.dateStr === dateStr && (now_ms - htmlCache.fetchedAt) < HTML_CACHE_TTL_MS) {
+      parsedDays = htmlCache.parsedDays;
+    } else {
+      // Fetch the full booking page which contains the table#schedule grid.
+      const url = `${TEATRALNA_CONFIG.SCHEDULE_URL}&date=${dateStr}`;
+      const response = await fetch(url, {
+        signal: AbortSignal.timeout(30000),
+      });
 
-    if (!response.ok) {
-      throw new Error(
-        `[Teatralna] HTTP ${response.status} fetching schedule`
-      );
+      if (!response.ok) {
+        throw new Error(
+          `[Teatralna] HTTP ${response.status} fetching schedule`
+        );
+      }
+
+      const html = await response.text();
+
+      // The upstream server returns 200 with an error div when its backend is down
+      if (html.includes('alert-danger') && html.includes('Wystąpił błąd')) {
+        throw new Error(
+          '[Teatralna] Upstream server error — SPA booking system returned an error page'
+        );
+      }
+
+      parsedDays = parseScheduleTable(html);
+      htmlCache = { html, parsedDays, dateStr, fetchedAt: now_ms };
     }
-
-    const html = await response.text();
-
-    // The upstream server returns 200 with an error div when its backend is down
-    if (html.includes('alert-danger') && html.includes('Wystąpił błąd')) {
-      throw new Error(
-        '[Teatralna] Upstream server error — SPA booking system returned an error page'
-      );
-    }
-
-    // Parse the schedule table
-    const parsedDays = parseScheduleTable(html);
 
     // Find the day matching the requested date
     const targetDay = parsedDays.find((d) => d.date === dateStr);
@@ -158,6 +176,11 @@ export class TeatralnaBasen1Scraper implements PoolScraper {
     return [
       { url: TEATRALNA_CONFIG.SCHEDULE_URL, label: 'Booking Page' },
     ];
+  }
+
+  getAvailableDates(): string[] {
+    if (!htmlCache) return [];
+    return htmlCache.parsedDays.map((d) => d.date);
   }
 }
 

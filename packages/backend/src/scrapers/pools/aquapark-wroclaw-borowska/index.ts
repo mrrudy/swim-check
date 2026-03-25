@@ -5,7 +5,7 @@
 
 import type { PoolScraper } from '../../types.js';
 import type { TimeSlot, LaneAvailability, ResolvedSourceLink } from '@swim-check/shared';
-import { parsePdfBuffer, filterSlotsForTimeSlot } from './parser.js';
+import { parsePdfBuffer, filterSlotsForTimeSlot, type ParsedSchedule } from './parser.js';
 import { getLanesByPoolId } from '../../../db/queries.js';
 import * as cheerio from 'cheerio';
 
@@ -13,6 +13,17 @@ import * as cheerio from 'cheerio';
 export const AQUAPARK_POOL_ID = '00000000-0000-0000-0000-000000000002';
 export const AQUAPARK_BASE_URL = 'https://aquapark.wroc.pl';
 export const AQUAPARK_SCHEDULE_URL = 'https://aquapark.wroc.pl/pl/grafik-rezerwacji-basenu-sportowego';
+
+// Internal parsed-data cache to avoid redundant PDF downloads during pre-population loop
+const PARSED_CACHE_TTL_MS = 60 * 1000; // 60 seconds
+
+interface ParsedDataCache {
+  parsedSchedule: ParsedSchedule;
+  pdfUrl: string;
+  fetchedAt: number;
+}
+
+let parsedDataCache: ParsedDataCache | null = null;
 
 export class AquaparkWroclawScraper implements PoolScraper {
   readonly poolId = AQUAPARK_POOL_ID;
@@ -37,30 +48,37 @@ export class AquaparkWroclawScraper implements PoolScraper {
     }
 
     try {
-      // Step 1: Fetch the schedule page to find the PDF URL
-      const pdfUrl = await this.findPdfUrl();
+      // Use cached parsed data if available and fresh (avoids redundant PDF downloads during pre-population)
+      let parsedSchedule: ParsedSchedule;
+      const now_ms = Date.now();
 
-      if (!pdfUrl) {
-        console.warn('Could not find PDF URL on schedule page');
-        this.lastResolvedPdfUrl = null;
-        // Return default availability
-        return this.getDefaultAvailability(laneIds);
+      if (parsedDataCache && (now_ms - parsedDataCache.fetchedAt) < PARSED_CACHE_TTL_MS) {
+        parsedSchedule = parsedDataCache.parsedSchedule;
+        this.lastResolvedPdfUrl = parsedDataCache.pdfUrl;
+      } else {
+        // Step 1: Fetch the schedule page to find the PDF URL
+        const pdfUrl = await this.findPdfUrl();
+
+        if (!pdfUrl) {
+          console.warn('Could not find PDF URL on schedule page');
+          this.lastResolvedPdfUrl = null;
+          return this.getDefaultAvailability(laneIds);
+        }
+
+        this.lastResolvedPdfUrl = pdfUrl;
+
+        // Step 2: Download and parse the PDF
+        const pdfBuffer = await this.downloadPdf(pdfUrl);
+        parsedSchedule = await parsePdfBuffer(pdfBuffer);
+
+        // Update cache
+        parsedDataCache = { parsedSchedule, pdfUrl, fetchedAt: now_ms };
       }
 
-      // Track the discovered PDF URL (006-scraping-status-view)
-      this.lastResolvedPdfUrl = pdfUrl;
-
-      // Step 2: Download and parse the PDF
-      const pdfBuffer = await this.downloadPdf(pdfUrl);
-
-      // Step 3: Parse the PDF content with position awareness
-      const parsedSchedule = await parsePdfBuffer(pdfBuffer);
-
-      // Step 4: Filter for the requested time slot
+      // Filter for the requested time slot
       return filterSlotsForTimeSlot(parsedSchedule, date, timeSlot, laneIds);
     } catch (error) {
       console.error('Error fetching Aquapark availability:', error);
-      // Return default availability on error
       return this.getDefaultAvailability(laneIds);
     }
   }
@@ -157,6 +175,27 @@ export class AquaparkWroclawScraper implements PoolScraper {
       { url: this.lastResolvedPdfUrl, label: 'PDF Schedule' },
     ];
   }
+
+  getAvailableDates(): string[] {
+    if (!parsedDataCache) return [];
+    return dayIndicesToDates(parsedDataCache.parsedSchedule.days.map(d => d.dayIndex));
+  }
 }
 
 export const aquaparkWroclawScraper = new AquaparkWroclawScraper();
+
+/**
+ * Convert day-of-week indices (0=Monday, 6=Sunday) to actual YYYY-MM-DD dates for the current week.
+ */
+function dayIndicesToDates(dayIndices: number[]): string[] {
+  const today = new Date();
+  // JS getDay: 0=Sun, 1=Mon ... 6=Sat → convert to 0=Mon index
+  const todayDayIndex = today.getDay() === 0 ? 6 : today.getDay() - 1;
+
+  return dayIndices.map(dayIndex => {
+    const diff = dayIndex - todayDayIndex;
+    const date = new Date(today);
+    date.setDate(today.getDate() + diff);
+    return date.toISOString().split('T')[0];
+  }).sort();
+}

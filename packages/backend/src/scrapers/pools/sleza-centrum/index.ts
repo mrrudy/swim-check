@@ -277,6 +277,17 @@ export class SlezaCentrumScraper implements PoolScraper {
     }
   }
 
+  getAvailableDates(): string[] {
+    if (!sheetDataCache) return [];
+    const dates: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(sheetDataCache.weekStartDate);
+      d.setDate(d.getDate() + i);
+      dates.push(d.toISOString().split('T')[0]);
+    }
+    return dates;
+  }
+
   private getDefaultAvailability(laneIds: Map<number, string>): LaneAvailability[] {
     const now = new Date();
     return Array.from(laneIds.entries()).map(([laneNumber, laneId]) => ({

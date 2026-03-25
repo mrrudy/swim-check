@@ -18,10 +18,125 @@ import {
   isAnyScrapeInProgress,
 } from './scrapeState.js';
 import { getTodayDate } from './scheduler.js';
-import type { ScrapeResult } from '@swim-check/shared';
+import { getCacheKey, getPoolCacheTtl } from './availability.js';
+import { availabilityCache } from './cache.js';
+import type { ScrapeResult, TimeSlot } from '@swim-check/shared';
+import { SLOT_CONSTANTS } from '@swim-check/shared';
 
 // Exponential backoff base delay (2 seconds)
 const BACKOFF_BASE_MS = 2000;
+
+/**
+ * Generate 30-minute time slots from current time (rounded up) to end-of-day (22:00).
+ * Only returns future slots - past slots are skipped.
+ */
+export function generateFutureSlots(currentTime: Date): TimeSlot[] {
+  const slots: TimeSlot[] = [];
+
+  // Parse operating hours from SLOT_CONSTANTS
+  const [firstH, firstM] = SLOT_CONSTANTS.FIRST_SLOT.split(':').map(Number);
+  const [lastH, lastM] = SLOT_CONSTANTS.LAST_SLOT.split(':').map(Number);
+  const firstMinutes = firstH * 60 + firstM;
+  const lastMinutes = lastH * 60 + lastM;
+
+  // Current time in minutes since midnight
+  const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+
+  // Round up to next 30-minute boundary
+  let startMinutes = Math.ceil(currentMinutes / 30) * 30;
+
+  // Clamp to operating hours
+  if (startMinutes < firstMinutes) startMinutes = firstMinutes;
+
+  // Generate slots
+  while (startMinutes < lastMinutes) {
+    const endMinutes = startMinutes + SLOT_CONSTANTS.MIN_DURATION;
+    if (endMinutes > lastMinutes) break;
+
+    const startTime = `${Math.floor(startMinutes / 60).toString().padStart(2, '0')}:${(startMinutes % 60).toString().padStart(2, '0')}`;
+    const endTime = `${Math.floor(endMinutes / 60).toString().padStart(2, '0')}:${(endMinutes % 60).toString().padStart(2, '0')}`;
+
+    slots.push({ startTime, endTime });
+    startMinutes = endMinutes;
+  }
+
+  return slots;
+}
+
+/**
+ * Generate all 30-minute time slots for a full operating day (05:00-22:00).
+ */
+export function generateAllDaySlots(): TimeSlot[] {
+  const slots: TimeSlot[] = [];
+
+  const [firstH, firstM] = SLOT_CONSTANTS.FIRST_SLOT.split(':').map(Number);
+  const [lastH, lastM] = SLOT_CONSTANTS.LAST_SLOT.split(':').map(Number);
+  const firstMinutes = firstH * 60 + firstM;
+  const lastMinutes = lastH * 60 + lastM;
+
+  let startMinutes = firstMinutes;
+  while (startMinutes < lastMinutes) {
+    const endMinutes = startMinutes + SLOT_CONSTANTS.MIN_DURATION;
+    if (endMinutes > lastMinutes) break;
+
+    const startTime = `${Math.floor(startMinutes / 60).toString().padStart(2, '0')}:${(startMinutes % 60).toString().padStart(2, '0')}`;
+    const endTime = `${Math.floor(endMinutes / 60).toString().padStart(2, '0')}:${(endMinutes % 60).toString().padStart(2, '0')}`;
+
+    slots.push({ startTime, endTime });
+    startMinutes = endMinutes;
+  }
+
+  return slots;
+}
+
+/**
+ * Pre-populate the availability cache for a pool after a successful scrape.
+ * Iterates over all available dates from the scraper, generating:
+ * - For today: only future slots (from current time rounded up)
+ * - For future dates: all slots for the full day
+ * Past dates are skipped.
+ */
+export async function prepopulateCacheForPool(poolId: string, todayStr: string): Promise<void> {
+  const scraper = scraperRegistry.get(poolId);
+  if (!scraper) return;
+
+  const pool = getPoolById(poolId);
+  const poolName = pool?.name ?? poolId;
+
+  // Determine which dates to pre-populate
+  const availableDates = scraper.getAvailableDates?.() ?? [todayStr];
+  const datesToCache = availableDates.filter(d => d >= todayStr).sort();
+
+  if (datesToCache.length === 0) return;
+
+  const cacheTtl = getPoolCacheTtl(scraper);
+  let totalCachedCount = 0;
+
+  for (const dateStr of datesToCache) {
+    const isToday = dateStr === todayStr;
+    const slots = isToday ? generateFutureSlots(new Date()) : generateAllDaySlots();
+    if (slots.length === 0) continue;
+
+    const date = new Date(dateStr + 'T00:00:00');
+
+    for (const slot of slots) {
+      try {
+        const lanes = await scraper.fetchAvailability(date, slot);
+        const cacheKey = getCacheKey(poolId, dateStr, slot.startTime, slot.endTime);
+        availabilityCache.set(cacheKey, { lanes, scrapedAt: new Date() }, cacheTtl);
+        totalCachedCount++;
+      } catch (error) {
+        console.warn(`[CachePrePopulate] Failed to cache slot ${dateStr} ${slot.startTime}-${slot.endTime} for ${poolName}:`, error);
+      }
+    }
+  }
+
+  if (totalCachedCount > 0) {
+    const firstDate = datesToCache[0];
+    const lastDate = datesToCache[datesToCache.length - 1];
+    console.log(`[CachePrePopulate] Pre-populated ${totalCachedCount} slots for ${poolName} (${firstDate} to ${lastDate})`);
+  }
+}
 
 /**
  * Get a random delay between min and max (for delay between pools)
@@ -118,10 +233,13 @@ export async function scrapePool(poolId: string): Promise<ScrapeResult> {
         const resolvedSourceUrls = scraper.getResolvedSourceUrls?.();
 
         // Success!
-        const duration = Date.now() - startTime;
-        console.log(`[Orchestrator] Successfully scraped ${poolName} in ${duration}ms`);
+        console.log(`[Orchestrator] Successfully scraped ${poolName} in ${Date.now() - startTime}ms`);
         markScrapeSuccess(poolId, todayDate, resolvedSourceUrls);
 
+        // Pre-populate cache for all future slots (012-scrape-cache-prepopulate)
+        await prepopulateCacheForPool(poolId, todayDate);
+
+        const duration = Date.now() - startTime;
         return {
           poolId,
           poolName,
