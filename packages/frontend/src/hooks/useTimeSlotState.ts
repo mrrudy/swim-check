@@ -3,7 +3,7 @@
  * Single source of truth consumed by both TimeSlotPicker and SlotNavigationButtons
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   TIME_OPTIONS,
   SLOT_CONSTANTS,
@@ -153,6 +153,19 @@ export function useTimeSlotState(
   );
   const [isInitialized, setIsInitialized] = useState(true);
   const [savedDuration, setSavedDuration] = useState(defaultDuration);
+
+  // Apply defaultDuration once when it first becomes available from async preferences load.
+  // We track whether we've applied it yet to avoid overwriting a user's manual change.
+  const appliedDefaultDurationRef = useRef(false);
+
+  useEffect(() => {
+    if (appliedDefaultDurationRef.current) return;
+    if (props.defaultDuration === undefined) return; // props not yet set, skip
+    appliedDefaultDurationRef.current = true;
+    setSavedDuration(defaultDuration);
+    setEndTimeInternal(calculateEndTime(initialDefaults.time, defaultDuration));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.defaultDuration]);
 
   // Derived values
   const duration = useMemo(

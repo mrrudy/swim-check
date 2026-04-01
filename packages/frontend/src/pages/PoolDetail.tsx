@@ -171,7 +171,9 @@ export function PoolDetail() {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Unified time slot state management - single source of truth
-  const timeSlotState = useTimeSlotState();
+  const timeSlotState = useTimeSlotState({
+    defaultDuration: viewPreferences.isLoading ? undefined : viewPreferences.slotDurationMins,
+  });
   const { state, setDate, setStartTime, setEndTime, handleNavigation, isInitialized } = timeSlotState;
 
   // Multi-slot data hook (005-pool-view-options) - only used when forwardSlotCount > 1

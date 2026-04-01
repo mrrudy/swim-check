@@ -15,6 +15,7 @@ const DEFAULTS = {
   compactViewEnabled: true,
   forwardSlotCount: 1,
   showNavEnabled: true,
+  slotDurationMins: 60,
 };
 
 /** Debounce delay for saving preferences (T032) */
@@ -25,6 +26,7 @@ export interface UseViewPreferencesReturn {
   compactViewEnabled: boolean;
   forwardSlotCount: number;
   showNavEnabled: boolean;
+  slotDurationMins: number;
 
   /** Loading states */
   isLoading: boolean;
@@ -47,6 +49,7 @@ export function useViewPreferences(): UseViewPreferencesReturn {
   const [compactViewEnabled, setCompactViewEnabledState] = useState(DEFAULTS.compactViewEnabled);
   const [forwardSlotCount, setForwardSlotCountState] = useState(DEFAULTS.forwardSlotCount);
   const [showNavEnabled, setShowNavEnabledState] = useState(DEFAULTS.showNavEnabled);
+  const [slotDurationMins, setSlotDurationMinsState] = useState(DEFAULTS.slotDurationMins);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +72,7 @@ export function useViewPreferences(): UseViewPreferencesReturn {
           setCompactViewEnabledState(prefs.compactViewEnabled);
           setForwardSlotCountState(prefs.forwardSlotCount);
           setShowNavEnabledState(prefs.showNavEnabled);
+          setSlotDurationMinsState(prefs.slotDurationMins);
         }
       } catch (err) {
         if (mounted) {
@@ -176,6 +180,7 @@ export function useViewPreferences(): UseViewPreferencesReturn {
     compactViewEnabled,
     forwardSlotCount,
     showNavEnabled,
+    slotDurationMins,
     isLoading,
     isSaving,
     error,

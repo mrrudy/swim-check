@@ -105,7 +105,9 @@ export function Home() {
   const viewPreferences = useViewPreferences();
 
   // T027: Time slot state management
-  const timeSlotState = useTimeSlotState();
+  const timeSlotState = useTimeSlotState({
+    defaultDuration: viewPreferences.isLoading ? undefined : viewPreferences.slotDurationMins,
+  });
   const { state, setDate, setStartTime, setEndTime, handleNavigation, isInitialized } = timeSlotState;
 
   // T028: Slot navigation hook for keyboard and button controls (with cross-day support)
