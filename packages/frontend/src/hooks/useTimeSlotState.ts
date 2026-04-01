@@ -3,7 +3,7 @@
  * Single source of truth consumed by both TimeSlotPicker and SlotNavigationButtons
  */
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   TIME_OPTIONS,
   SLOT_CONSTANTS,
@@ -151,7 +151,7 @@ export function useTimeSlotState(
   const [endTime, setEndTimeInternal] = useState(() =>
     calculateEndTime(initialDefaults.time, defaultDuration)
   );
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(true);
   const [savedDuration, setSavedDuration] = useState(defaultDuration);
 
   // Derived values
@@ -177,23 +177,7 @@ export function useTimeSlotState(
     [date, startTime, endTime, duration, slotIndex]
   );
 
-  // Fetch default time slot from server on mount
-  useEffect(() => {
-    api.getDefaultTimeSlot()
-      .then((defaultSlot) => {
-        setDateInternal(defaultSlot.date);
-        setStartTimeInternal(defaultSlot.startTime);
-        setEndTimeInternal(defaultSlot.endTime);
-        setSavedDuration(defaultSlot.durationMins);
-        setIsInitialized(true);
-      })
-      .catch((err) => {
-        console.warn('Failed to fetch default time slot:', err);
-        setIsInitialized(true);
-      });
-  }, []);
-
-  // State setters with validation
+// State setters with validation
   const setDate = useCallback((newDate: string) => {
     setDateInternal(newDate);
   }, []);
